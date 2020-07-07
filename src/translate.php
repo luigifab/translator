@@ -1,0 +1,1063 @@
+<?php
+/**
+ * Created L/10/12/2012
+ * Updated V/12/06/2020
+ *
+ * Copyright 2008-2020 | Fabrice Creuzot (luigifab) <code~luigifab~fr>
+ * https://www.luigifab.fr/ + https://github.com/luigifab/translator
+ *
+ * This program is free software, you can redistribute it or modify
+ * it under the terms of the GNU General Public License (GPL) as published
+ * by the free software foundation, either version 2 of the license, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but without any warranty, without even the implied warranty of
+ * merchantability or fitness for a particular purpose. See the
+ * GNU General Public License (GPL) for more details.
+ */
+
+chdir(__DIR__);
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+date_default_timezone_set('UTC');
+header('Content-Type: text/plain; charset=utf-8');
+
+if (PHP_SAPI != 'cli')
+	exit('Run me only with cli.');
+
+class Translate {
+
+	public const VERSION = '1.0.0';
+
+	public function run($argv) {
+
+		global $openMageDefault;
+		global $updateTranslationOpenMageModule;
+		global $updateTranslationRedminePlugin;
+		global $updateTranslationPo;
+		global $updateTranslationApijs;
+		global $updateTranslationWebsite;
+		global $updateTranslationOpenMageFull;
+
+		if (in_array('all', $argv))
+			$argv = ['openmage-module', 'redmine-plugin', 'apijs', 'po', 'custom'];
+
+		if (!empty($updateTranslationOpenMageModule) && !empty($openMageDefault) && in_array('openmage-module', $argv)) {
+
+			$files = glob($openMageDefault, SCANDIR_SORT_NONE);
+			$ignoreStrings = $this->loadCSV($files);
+			unset($ignoreStrings['Username']);
+
+			foreach ($updateTranslationOpenMageModule as $config) {
+				echo 'updateTranslationOpenMageModule: ',$config['vendor'],'/',$config['name'],"\n";
+				if (!is_dir($config['dir'])) exit("\nfatal: ".$config['dir']." does not exist!\n");
+				$this->updateTranslationOpenMageModule($ignoreStrings, $config);
+			}
+		}
+
+		if (!empty($updateTranslationRedminePlugin) && in_array('redmine-plugin', $argv)) {
+			foreach ($updateTranslationRedminePlugin as $config) {
+				echo 'updateTranslationRedminePlugin: ',$config['vendor'],'/',$config['name'],"\n";
+				if (!is_dir($config['dir'])) exit("\nfatal: ".$config['dir']." does not exist!\n");
+				$this->updateTranslationRedminePlugin([], $config);
+			}
+		}
+
+		if (!empty($updateTranslationPo) && in_array('po', $argv)) {
+			foreach ($updateTranslationPo as $config) {
+				echo 'updateTranslationPo: ',$config['vendor'],'/',$config['name'],"\n";
+				if (!is_dir($config['dir'])) exit("\nfatal: ".$config['dir']." does not exist!\n");
+				$this->updateTranslationPo([], $config);
+			}
+		}
+
+		if (!empty($updateTranslationApijs) && in_array('apijs', $argv)) {
+			foreach ($updateTranslationApijs as $config) {
+				echo 'updateTranslationApijs: ',$config['vendor'],'/',$config['name'],"\n";
+				if (!is_dir($config['dir'])) exit("\nfatal: ".$config['dir']." does not exist!\n");
+				$this->updateTranslationApijs([], $config);
+			}
+		}
+
+		if (!empty($updateTranslationWebsite) && in_array('custom', $argv)) {
+			foreach ($updateTranslationWebsite as $config) {
+				echo 'updateTranslationWebsite: ',$config['vendor'],'/',$config['name'],"\n";
+				if (!is_dir($config['dir'])) exit("\nfatal: ".$config['dir']." does not exist!\n");
+				$this->updateTranslationWebsite([], $config);
+			}
+		}
+
+		if (!empty($updateTranslationOpenMageFull) && in_array('openmage-full', $argv)) {
+			$this->updateTranslationOpenMage($updateTranslationOpenMageFull);
+		}
+	}
+
+	private function mergeStrings(array $config, array &$sourceStrings, array &$ignoreStrings) {
+
+		// add data from config
+		if (!empty($config['sourceStringsAfter']))
+			$sourceStrings = array_merge($sourceStrings, $config['sourceStringsAfter']);
+		if (!empty($config['ignoreStrings']))
+			$ignoreStrings = array_merge($ignoreStrings, $config['ignoreStrings']);
+
+		// remove ignored strings
+		foreach ($sourceStrings as $i => $string) {
+			if (($string == ' ') || in_array($string, $ignoreStrings))
+				unset($sourceStrings[$i]);
+		}
+
+		// very important
+		$sourceStrings = array_values(array_unique($sourceStrings));
+	}
+
+	private function generateApipsEmbed(array $config) {
+
+		$files = [];
+		exec('find '.$config['dir'].' -name "*.js"', $files);
+		sort($files);
+
+		foreach ($files as $file) {
+
+			// load strings to translate from JS
+			$key = mb_substr($file, mb_strripos($file, '/') + 1);
+			$template = file_get_contents($file);
+			$sourceStrings = $this->loadService($config, 'en_US', $key, $template, [], false, true);
+
+			if ($sourceStrings === false)
+				continue;
+
+			$locales = $config['locales'];
+			if (!in_array('en', $locales) && !in_array('en_US', $locales) && !in_array('en-US', $locales))
+				$locales[] = 'en_US';
+
+			// load translated strings from TSV service, and from TSV service
+			$translatedStrings = [];
+			foreach ($locales as $locale) {
+				echo ' ',mb_substr($locale, 0, 5);
+				$translatedStrings[$locale] = $this->loadService($config, $locale, $key, $sourceStrings);
+			}
+
+			// write final JS file
+			echo ' ';
+			$final = $this->generateJS($sourceStrings, $translatedStrings, $template);
+			$this->writeFile($file, $final);
+		}
+	}
+
+	private function updateTranslationOpenMageModule(array $ignoreStrings, array $config) {
+
+		// search strings to translate
+		if (empty($config['search'])) {
+
+			$files1 = [];
+			exec('find '.$config['dir'].'app/ -name "*.xml"', $files1);
+			sort($files1);
+
+			$files2 = [];
+			exec('find '.$config['dir'].'app/ -name "*.phtml"', $files2);
+			exec('find '.$config['dir'].'app/ -name "*.php"', $files2);
+			sort($files2);
+
+			$sourceStrings = empty($config['sourceStringsBefore']) ? [] : $config['sourceStringsBefore'];
+			$this->searchAndReadXML($sourceStrings, $files1);
+			$this->searchAndReadPHP($sourceStrings, $files2);
+		}
+		else {
+			exit("\nnot yet implemented\n"); // TODO
+		}
+
+		$this->mergeStrings($config, $sourceStrings, $ignoreStrings);
+
+		// generate CSV
+		foreach ($config['locales'] as $locale) {
+
+			echo ' ',str_pad(mb_substr($locale, 0, 5), 6, ' ');
+
+			// load translated strings from CSV files, and from TSV service
+			$file = $config['dir'].'app/locale/'.$locale.'/'.$config['vendor'].'_'.$config['name'].'.csv';
+			$translatedStrings = $this->loadCSV([$file]);
+			$translatedStrings = $this->loadService($config, $locale, 'base', $sourceStrings, $translatedStrings);
+
+			// write final CSV file
+			$final = $this->generateCSV($sourceStrings, $translatedStrings);
+			if (!is_dir($config['dir'].'app/locale/'.$locale))
+				mkdir($config['dir'].'app/locale/'.$locale, 0755);
+
+			$this->writeOpenMageFile($config, $locale, $file, $final);
+		}
+
+		// generate HTML
+		$emails = glob($config['dir'].'app/locale/en_US/template/email/*.html');
+		foreach ($emails as $email) {
+
+			// load template and strings to translate from TSV service
+			$key = mb_substr($email, mb_strripos($email, '/') + 1);
+			$template = file_get_contents($email);
+			$sourceStrings = $this->loadService($config, 'en_US', $key, $template);
+
+			foreach ($config['locales'] as $locale) {
+
+				echo ' ',str_pad(mb_substr($locale, 0, 5), 6, ' ');
+				if (!is_dir($config['dir'].'app/locale/'.$locale.'/template/email/')) {
+					echo  ' (template/email directory does not exist)',"\n";
+					continue;
+				}
+
+				// load translated strings from TSV service
+				$translatedStrings = $this->loadService($config, $locale, $key, $sourceStrings);
+
+				// write final HTML file
+				$final = $this->generateHTML($sourceStrings, $translatedStrings, $template);
+				$final = str_replace(' lang="en"', ' lang="'.mb_substr($locale, 0, 2).'"', $final);
+				$this->writeOpenMageFile($config, $locale, str_replace('en_US', $locale, $email), $final);
+			}
+
+			// copy to en_XX HTML files
+			if (!in_array('en_AU', $config['locales']))
+				copy($email, str_replace('en_US', 'en_AU', $email));
+			if (!in_array('en_CA', $config['locales']))
+				copy($email, str_replace('en_US', 'en_CA', $email));
+			if (!in_array('en_GB', $config['locales']))
+				copy($email, str_replace('en_US', 'en_GB', $email));
+			if (!in_array('en_IE', $config['locales']))
+				copy($email, str_replace('en_US', 'en_IE', $email));
+			if (!in_array('en_NZ', $config['locales']))
+				copy($email, str_replace('en_US', 'en_NZ', $email));
+		}
+
+		// generate JS (apijs magic key)
+		$this->generateApipsEmbed($config);
+
+		echo "\n";
+	}
+
+	private function updateTranslationRedminePlugin(array $ignoreStrings, array $config) {
+
+		// search strings to translate
+		if (empty($config['search'])) {
+
+			$files = [];
+			exec('find '.$config['dir'].' -name "*.rb"', $files);
+			exec('find '.$config['dir'].' -name "*.erb"', $files);
+			sort($files);
+
+			$sourceStrings = empty($config['sourceStringsBefore']) ? [] : $config['sourceStringsBefore'];
+			$this->searchAndReadRB($sourceStrings, $files, $config['filter']);
+		}
+		else {
+			exit("\nnot yet implemented\n"); // TODO
+		}
+
+		$this->mergeStrings($config, $sourceStrings, $ignoreStrings);
+
+		// generate YML
+		foreach ($config['locales'] as $locale) {
+
+			echo ' ',str_pad(mb_substr($locale, 0, 5), 6, ' ');
+
+			// load translated strings from YML files, and from TSV service
+			$file = $config['dir'].'config/locales/'.$locale.'.yml';
+			$translatedStrings = $this->loadYML([$file]);
+			$translatedStrings = $this->loadService($config, $locale, 'base', $sourceStrings, $translatedStrings, true);
+
+			// write final CSV file
+			$final = $this->generateYML($sourceStrings, $translatedStrings, $locale);
+			$this->writeFile($file, $final);
+		}
+
+		// generate JS (apijs magic key)
+		$this->generateApipsEmbed($config);
+
+		echo "\n";
+	}
+
+	private function updateTranslationPo(array $ignoreStrings, array $config) {
+
+		foreach ($config['gettext'] as $cmd) {
+			echo ' run: ',$cmd,"\n";
+			exec($cmd);
+		}
+
+		// search strings to translate
+		if (empty($config['search'])) {
+
+			$files = [];
+			exec('find '.$config['dir'].' -name "*.po"', $files);
+			sort($files);
+
+			$sourceStrings = empty($config['sourceStringsBefore']) ? [] : $config['sourceStringsBefore'];
+			$this->readPo($sourceStrings, $files);
+		}
+		else {
+			exit("\nnot yet implemented\n"); // TODO
+		}
+
+		$this->mergeStrings($config, $sourceStrings, $ignoreStrings);
+
+		// generate PO
+		foreach ($config['locales'] as $locale) {
+
+			echo ' ',str_pad(mb_substr($locale, 0, 5), 6, ' ');
+
+			// load translated strings from PO files, and from TSV service
+			$file = $config['dir'].$locale.'.po';
+			$translatedStrings = $this->loadPO([$file]);
+			$translatedStrings = $this->loadService($config, $locale, 'base', $sourceStrings, $translatedStrings, true);
+
+			// write final PO file
+			$final = $this->generatePO($sourceStrings, $translatedStrings, file_get_contents($file));
+			$this->writeFile($file, $final);
+
+			// regenerate PO
+			foreach ($config['gettext'] as $cmd) {
+				if (mb_strpos($cmd, 'msgmerge') !== false) {
+					echo ' run: ',$cmd,"\n";
+					exec($cmd);
+				}
+			}
+		}
+
+		echo "\n";
+	}
+
+	private function updateTranslationApijs(array $ignoreStrings, array $config) {
+
+		// JS (apijs magic key)
+		$file = $config['dir'].$config['search'][0];
+
+			// load strings to translate from JS
+			$template      = file_get_contents($file);
+			$sourceStrings = $this->loadService($config, 'en_US', 'base', $template, [], false, true);
+
+			if ($sourceStrings === false)
+				exit("\nfatal: sourceStrings not found for APIJS!\n");
+
+			// load translated strings from TSV service
+			$translatedStrings = [];
+			foreach ($config['locales'] as $locale) {
+				echo ' ',mb_substr($locale, 0, 5);
+				$translatedStrings[$locale] = $this->loadService($config, $locale, 'base', $sourceStrings);
+			}
+
+			// write final JS file
+			echo ' ';
+			$final = $this->generateJS($sourceStrings, $translatedStrings, $template, true);
+			$this->writeFile($file, $final);
+
+		echo "\n";
+	}
+
+	private function updateTranslationWebsite(array $ignoreStrings, array $config) {
+
+		// search strings to translate
+		if (empty($config['search'])) {
+			exit("\nnot yet implemented\n"); // TODO
+		}
+		else {
+			$files = [];
+			foreach ($config['search'] as $mask) {
+				if (mb_stripos($mask, '*') !== false)
+					exec('find '.$config['dir'].$mask.' -name "*.php"', $files);
+				else
+					$files[] = $config['dir'].$mask;
+			}
+
+			$sourceStrings = empty($config['sourceStringsBefore']) ? [] : $config['sourceStringsBefore'];
+			$this->searchAndReadPHP($sourceStrings, $files);
+		}
+
+		$this->mergeStrings($config, $sourceStrings, $ignoreStrings);
+
+		// generate CSV
+		foreach ($config['locales'] as $locale) {
+
+			echo ' ',str_pad(mb_substr($locale, 0, 5), 6, ' ');
+
+			// load translated strings from CSV files, and from TSV service
+			$file = $config['dir'].$locale.'.csv';
+			$translatedStrings = $this->loadCSV([$file]);
+			$translatedStrings = $this->loadService($config, $locale, 'base', $sourceStrings, $translatedStrings);
+
+			// write final CSV file
+			$final = $this->generateCSV($sourceStrings, $translatedStrings);
+			$this->writeFile($file, $final);
+		}
+
+		echo "\n";
+	}
+
+	private function updateTranslationOpenMage(array $config) {
+
+		echo '     loading source files from: ',$config['dir'],' (xml/phtml/php/csv)',"\n";
+		echo ' loading new translations from: ',implode(' ', $config['packs']),"\n\n";
+
+		// search strings to translate
+		$files1 = [];
+		exec('find '.$config['dir'].'app/ -name "*.xml"', $files1);
+		sort($files1);
+
+		$files2 = [];
+		exec('find '.$config['dir'].'app/ -name "*.phtml"', $files2);
+		exec('find '.$config['dir'].'app/ -name "*.php"', $files2);
+		sort($files2);
+
+		$sourceStrings = [];
+		$this->searchAndReadXML($sourceStrings, $files1);
+		$this->searchAndReadPHP($sourceStrings, $files2);
+
+		// remove ignored strings
+		$ignoreStrings = $config['ignoreStrings'];
+		foreach ($sourceStrings as $i => $string) {
+			if (($string == ' ') || in_array($string, $ignoreStrings))
+				unset($sourceStrings[$i]);
+		}
+
+		// very important
+		$sourceStrings = array_values(array_unique($sourceStrings));
+
+		// search english csv models
+		$models = [];
+		exec('find '.$config['dir'].'app/locale/en_US/ -name "Mage_*.csv"', $models);
+		sort($models);
+
+		if (empty($models))
+			exit('fatal: '.$config['dir']."app/locale/en_US/Mage_*.csv does not exist!\n");
+
+		// action
+		$locales = scandir($config['dir'].'app/locale/');
+		foreach ($config['packs'] as $pack)
+			$locales = array_merge($locales, scandir($pack));
+
+		$locales = array_unique($locales);
+		sort($locales);
+
+		foreach ($locales as $locale) {
+
+			if (($locale !== 'en_US') && (mb_strlen($locale) === 5)) {
+
+				$files = [];
+				$translatedStrings = [];
+
+				// loading existing translations
+				if (is_dir($config['dir'].'app/locale/'.$locale)) {
+					exec('find '.$config['dir'].'app/locale/'.$locale.'/ -name "Mage_*.csv"', $files);
+					$translatedStrings = $this->loadCSV($files);
+				}
+
+				// loading new translations
+				foreach ($config['packs'] as $pack) {
+					if (is_dir($pack.$locale)) {
+						exec('find '.$pack.$locale.'/ -name "Mage_*.csv"', $files);
+						$translatedStrings = array_merge($translatedStrings, $this->loadCSV($files));
+					}
+				}
+
+				$c2 = count($sourceStrings);
+				$c1 = $c2 - count($translatedStrings);
+				if ($c1 <= 0) $c1 = 0;
+
+				echo $locale,': ',str_pad(count($files), 3, ' ', STR_PAD_LEFT),
+					' csv loaded: there are ',str_pad($c1, 4, ' ', STR_PAD_LEFT),' strings not translated / ',
+					str_pad(($c1 <= 0) ? 100 : round(100 - $c1 * 100 / $c2, 2), 5, ' ', STR_PAD_LEFT),'% translated',"\n";
+
+				foreach ($models as $file) {
+
+					$final = $this->loadCSV([$file]);
+					$final = $this->generateCSV($final, $translatedStrings);
+
+					$file = $config['dir'].'app/locale/'.$locale.'/'.basename($file);
+					if (!empty($final)) {
+						if (!is_dir(dirname($file)))
+							mkdir(dirname($file), 0755);
+						file_put_contents($file, $final);
+					}
+					else if (is_file($file)) {
+						unlink($file);
+					}
+				}
+			}
+		}
+	}
+
+
+	// CREATE FINAL FILES
+	private function writeFile(string $file, string $final) {
+
+		file_put_contents($file, $final);
+		echo realpath($file),"\n";
+	}
+
+	private function writeOpenMageFile(array $config, string $locale, string $file, string $final) {
+
+		file_put_contents($file, $final);
+		echo realpath($file),"\n";
+		if (($locale == 'fr_FR') && !in_array('fr_CA', $config['locales']))
+			file_put_contents(str_replace($locale, 'fr_CA', $file), $final);
+		if (($locale == 'it_IT') && !in_array('it_CH', $config['locales']))
+			file_put_contents(str_replace($locale, 'it_CH', $file), $final);
+		if (($locale == 'de_DE') && !in_array('de_CH', $config['locales']))
+			file_put_contents(str_replace($locale, 'de_CH', $file), $final);
+		if (($locale == 'de_DE') && !in_array('de_AT', $config['locales']))
+			file_put_contents(str_replace($locale, 'de_AT', $file), $final);
+		if (($locale == 'es_ES') && !in_array('es_AR', $config['locales']))
+			file_put_contents(str_replace($locale, 'es_AR', $file), $final);
+		if (($locale == 'es_ES') && !in_array('es_CL', $config['locales']))
+			file_put_contents(str_replace($locale, 'es_CL', $file), $final);
+		if (($locale == 'es_ES') && !in_array('es_CO', $config['locales']))
+			file_put_contents(str_replace($locale, 'es_CO', $file), $final);
+		if (($locale == 'es_ES') && !in_array('es_CR', $config['locales']))
+			file_put_contents(str_replace($locale, 'es_CR', $file), $final);
+		if (($locale == 'es_ES') && !in_array('es_MX', $config['locales']))
+			file_put_contents(str_replace($locale, 'es_MX', $file), $final);
+		if (($locale == 'es_ES') && !in_array('es_PA', $config['locales']))
+			file_put_contents(str_replace($locale, 'es_PA', $file), $final);
+		if (($locale == 'es_ES') && !in_array('es_PE', $config['locales']))
+			file_put_contents(str_replace($locale, 'es_PE', $file), $final);
+		if (($locale == 'es_ES') && !in_array('es_VE', $config['locales']))
+			file_put_contents(str_replace($locale, 'es_VE', $file), $final);
+	}
+
+	private function generateCSV(array $sourceStrings, array $translatedStrings) {
+
+		$data = [];
+
+		foreach ($sourceStrings as $i => $string) {
+			if (!empty($translatedStrings[$i]) && ($translatedStrings[$i] != $string))
+				$data[] = '"'.str_replace('"', '""', $string).'","'.str_replace('"', '""', $translatedStrings[$i]).'"';
+		}
+
+		return implode("\n", $data);
+	}
+
+	private function generateHTML(array $sourceStrings, array $translatedStrings, string $template) {
+
+		foreach ($sourceStrings as $i => $string) {
+			$translation = empty($translatedStrings[$i]) ? $string : $translatedStrings[$i];
+			$template = (string) str_replace([
+				' '.$string.' ',
+				'>'.$string.'<',
+				'"'.$string.'"',
+				'>'.$string,
+				' - '.$string
+			], [
+				' '.$translation.' ',
+				'>'.$translation.'<',
+				'"'.$translation.'"',
+				'>'.$translation,
+				' - '.$translation
+			], $template); // (yes)
+		}
+
+		return $template;
+	}
+
+	private function generateYML(array $sourceStrings, array $translatedStrings, string $locale) {
+
+		$data = [$locale.':'];
+
+		foreach ($sourceStrings as $i => $string)
+			$data[] = '  '.$string.': "'.$translatedStrings[$i].'"';
+
+		return implode("\n", $data);
+	}
+
+	private function generateJS(array $sourceStrings, array $translatedStrings, string $template, bool $forAPIJS = false) {
+
+		$data = [];
+		ksort($translatedStrings);
+
+		foreach ($translatedStrings as $locale => $translatedStrs) {
+
+			$current = $locale;
+			$locale  = str_replace('-', '_', $locale);
+			if (mb_strlen($locale) > 2) {
+				$tmp = (array) explode('_', $locale); // (yes)
+				if (mb_strtolower($tmp[0]) == mb_strtolower($tmp[1])) {
+					$locale = $tmp[0];
+					$double = mb_strtolower($locale).'_'.mb_strtoupper($locale);
+				}
+				else {
+					$double = mb_strtolower($tmp[0]).'_'.mb_strtoupper($tmp[0]);
+				}
+			}
+			else {
+				$double = mb_strtolower($locale).'_'.mb_strtoupper($locale);
+			}
+
+			if ($locale == 'en_US')
+				$locale = 'en';
+			else if ($locale == 'zh_CN')
+				$locale = 'zh';
+			else if ($locale == 'ja_JP')
+				$locale = 'ja';
+			else if ($locale == 'cs_CZ')
+				$locale = 'cs';
+
+			$tmp = mb_substr($locale, 0, 2);
+
+			if ($forAPIJS)
+				$data[] = '		'.mb_strtolower(str_replace('_', '', $locale)).': {';
+
+			foreach ($sourceStrings as $i => $string) {
+				if (!empty($translatedStrs[$i])) {
+					// ignore
+					if ($locale != 'en') {
+						if (($double != $current) && array_key_exists($double, $translatedStrings) && ($translatedStrs[$i] == $translatedStrings[$double][$i]))
+							continue;
+						if (array_key_exists('en', $translatedStrings) && ($translatedStrs[$i] == $translatedStrings['en'][$i]))
+							continue;
+						if (array_key_exists('en_US', $translatedStrings) && ($translatedStrs[$i] == $translatedStrings['en_US'][$i]))
+							continue;
+						if (($tmp != $locale) && array_key_exists($tmp, $translatedStrings) &&
+						    ($translatedStrs[$i] == $translatedStrings[$tmp][$i])) // ignore pt_BR if pt_BR == pt(_PT)
+							continue;
+					}
+					// keep
+					if ($forAPIJS)
+						$data[] = '			'.$string.': "'.$translatedStrs[$i].'",';
+					else
+						$data[] = '		d.'.mb_strtolower(str_replace('_', '', $locale)).'['.$string.'] = "'.$translatedStrs[$i].'";';
+				}
+			}
+
+			if ($forAPIJS) {
+				$data[count($data) - 1] = mb_substr($data[count($data) - 1], 0, -1);
+				$data[] = '		},';
+			}
+		}
+
+		return mb_substr($template, 0, mb_stripos($template, '// auto start') + 14).
+			($forAPIJS ? mb_substr(implode("\n", $data), 0, -1)."\n\t\t" : implode("\n", $data)."\n\t").
+			mb_substr($template, mb_stripos($template, '// auto end'));
+	}
+
+	private function generatePO(array $sourceStrings, array $translatedStrings, string $originalContent) {
+
+		$data = ['msgid ""', 'msgstr ""', '"Content-Type: text/plain; charset=utf-8\n"', '"Content-Transfer-Encoding: 8bit\n"'];
+		$cnt  = 0;
+
+		foreach ($sourceStrings as $i => $string) {
+
+			if (!empty($translatedStrings[$i])) {
+
+				$string = preg_replace('#^§|§$#u', ' ', $string);
+				$translatedString = preg_replace('#^§|§$#u', ' ', $translatedStrings[$i]);
+
+				if (mb_strpos($originalContent, 'msgid "'.$string.'"') !== false) {
+					$data[] = 'msgid "'.$string.'"';
+					$data[] = 'msgstr "'.$translatedString.'"';
+					$data[] = '';
+				}
+				else if (mb_strpos($originalContent, "msgid \"\"\n\"".$string) !== false) {
+					$cnt = -2;
+					$data[] = 'msgid ""';
+					$data[] = '"'.$string.'"';
+					$data[] = 'msgstr ""';
+					$data[] = '"'.$translatedString.'"';
+				}
+				else if (mb_strpos($originalContent, "\"\n\"".$string."\"\nmsgstr") !== false) {
+					array_splice($data, $cnt--, 0, ['"'.$string.'"']);
+					$data[] = '"'.$translatedString.'"';
+					$data[] = '';
+				}
+				else if (mb_strpos($originalContent, "\"\n\"".$string.'"') !== false) {
+					array_splice($data, $cnt--, 0, ['"'.$string.'"']);
+					$data[] = '"'.$translatedString.'"';
+				}
+			}
+		}
+
+		return implode("\n", $data);
+	}
+
+
+	// LOAD TRANSLATED STRINGS FROM SERVICE
+	// TSV file (for example a google sheet export)
+	// return $data[] = translation
+	public function loadService(array $config, string $locale, string $src, $sourceStrings, array $translatedStrings = [],
+		bool $fill = false, bool $onlyKeys = false) {
+
+		if (empty($config['service'])) {
+			// return same format when service is available
+			$data = [];
+			foreach ($translatedStrings as $key => $value) {
+				$key = array_search($key, $sourceStrings);
+				if ($key !== false)
+					$data[$key] = $value;
+			}
+			ksort($data);
+			return $data;
+		}
+
+		$code = $config['vendor'].'/'.$config['name'];
+		$strs = empty($config['nocheckStrings']) ? [] : $config['nocheckStrings'];
+
+		global $cache;
+		if (empty($cache))
+			$cache = [];
+
+		// load TSV
+		// from cache or from the world wide web
+		if (array_key_exists($key = md5($config['service']), $cache)) {
+			$lines = $cache[$key];
+		}
+		else {
+			$lines = explode("\n", file_get_contents($config['service']));
+			$cache[$key] = $lines;
+		}
+
+		// search data
+		// from cache of from TSV
+		if (array_key_exists($key = md5($code), $cache)) {
+			$data = $cache[$key];
+		}
+		else {
+			$data  = [];
+			$head  = [];
+			$keys  = -1;
+			$enus  = -1;
+			$found = false;
+			$group = 'base';
+
+			foreach ($lines as $line) {
+
+				$cells = (array) explode("\t", $line); // (yes)
+
+				if (empty($head)) {
+					foreach ($cells as $i => $cell) {
+						if (mb_stripos($cell, 'config') !== false)
+							$head[$keys = $i] = 'config';
+						else if (preg_match('#[a-z]{2}-[A-Z]{2} \(#', $cell) === 1)
+							$head[$i] = trim(mb_substr($cell, 0, mb_stripos($cell, ' ')));
+					}
+					$enus = array_search('en-US', $head);
+					if ($keys < 0)
+						exit("\nfatal: column config not found in TSV!\n");
+					if (($enus === false) || ($enus < 0))
+						exit("\nfatal: column en-US not found in TSV!\n");
+				}
+				else if (!$found) {
+					if (mb_strtolower($cells[$keys]) == mb_strtolower($code))
+						$found = true;
+				}
+				else if (empty($cells[$keys]) && empty($cells[$enus])) {
+					if ($code != 'Custom/Doc')
+						break;
+				}
+				else if ((mb_stripos($cells[$keys], '.html') !== false) || ((mb_stripos($cells[$keys], '.js') !== false))) {
+					$group = $cells[$keys];
+				}
+				else {
+					foreach ($head as $i => $value) { // rtrim for the last column
+						$cell = rtrim($cells[$i]);
+						if ($fill && empty($cell))
+							$data[$code][$value][$group][] = rtrim($cells[$enus]);
+						else
+							$data[$code][$value][$group][] = $cell;
+					}
+				}
+			}
+
+			$cache[$key] = $data;
+		}
+
+		if (empty($cache[$key]))
+			exit("\nfatal: data not found in TSV!\n");
+
+		// check data from HTML
+		if (is_string($sourceStrings) && (mb_substr($src, -5) == '.html')) {
+
+			foreach ($data[$code]['en-US'][$src] as $i => $string) {
+
+				if ((mb_stripos($sourceStrings, '>'.$string.'<') === false) &&
+				    (mb_stripos($sourceStrings, '"'.$string.'"') === false) &&
+				    (mb_stripos($sourceStrings, '>'.$string) === false) &&
+				    (mb_stripos($sourceStrings, ' '.$string.' ') === false)
+				) {
+					echo "\n\n",'STOP! string was not found in HTML';
+					if (isset($data[$code]['en-US'][$src][$i - 1]))
+					echo "\n",' previous string found: ',$data[$code]['en-US'][$src][$i - 1];
+					echo "\n",'      string not found: ',$data[$code]['en-US'][$src][$i];
+					if (isset($data[$code]['en-US'][$src][$i + 1]))
+					echo "\n",'           next string: ',$data[$code]['en-US'][$src][$i + 1];
+					exit("\n");
+				}
+			}
+		}
+		// check data from JS
+		else if (is_string($sourceStrings) && ((mb_substr($src, -3) == '.js') || (mb_substr($config['name'], -3) == '.js'))) {
+
+			if (empty($data[$code]['en-US'][$src]))
+				return false;
+
+			foreach ($data[$code]['en-US'][$src] as $i => $string) {
+
+				if ((mb_stripos($sourceStrings, '] = "'.$string.'"') === false) && (mb_stripos($sourceStrings, ': "'.$string.'"') === false)) {
+					echo "\n\n",'STOP! string was not found in JS';
+					if (isset($data[$code]['en-US'][$src][$i - 1]))
+					echo "\n",' previous string found: ',$data[$code]['en-US'][$src][$i - 1];
+					echo "\n",'      string not found: ',$data[$code]['en-US'][$src][$i];
+					if (isset($data[$code]['en-US'][$src][$i + 1]))
+					echo "\n",'           next string: ',$data[$code]['en-US'][$src][$i + 1];
+					exit("\n");
+				}
+			}
+		}
+		// check data from CSV
+		else if (is_array($sourceStrings) && empty($config['allowNotSame'])) {
+			foreach ($sourceStrings as $i => $string) {
+
+				if (!isset($data[$code]['en-US'][$src][$i])) {
+					echo "\n\n",'STOP! string was not found in TSV';
+					if (isset($data[$code]['en-US'][$src][$i - 1]))
+					echo "\n",' previous string found: ',$data[$code]['en-US'][$src][$i - 1];
+					echo "\n",'          string found: (nothing)';
+					echo "\n",'       string expected: ',$string;
+					exit("\n");
+				}
+				if (($string != $data[$code]['en-US'][$src][$i]) && // 'Created At'
+					    ($string != ' '.$data[$code]['en-US'][$src][$i]) && // ' Created At'
+					    ($string != $data[$code]['config'][$src][$i])
+				) {
+					$allow = false;
+					foreach ($strs as $str) {
+						if (mb_stripos($string, $str) !== false) {
+							// special in the TSV for new line
+							foreach (array_keys($data[$code]) as $value)
+								$data[$code][$value][$src][$i] = str_replace(' #<', "\n<", $data[$code][$value][$src][$i]);
+							$allow = true;
+							break;
+						}
+					}
+					if (!$allow) {
+						echo "\n\n",'STOP! string was not found in TSV';
+						if (isset($data[$code]['en-US'][$src][$i - 1]))
+						echo "\n",' previous string found: ',$data[$code]['en-US'][$src][$i - 1];
+						echo "\n",'          string found: ',$data[$code]['en-US'][$src][$i];
+						echo "\n",'       string expected: ',$string;
+						if (isset($data[$code]['en-US'][$src][$i + 1]))
+						echo "\n",'           next string: ',$data[$code]['en-US'][$src][$i + 1];
+						exit("\n");
+					}
+				}
+			}
+		}
+
+		// update locale code
+		if (mb_strlen($locale) == 2)
+			$locale .= '_'.mb_strtoupper($locale);
+		else if (mb_strlen($locale) > 5)
+			$locale = mb_substr($locale, 0, 5);
+
+		if ($locale == 'en_EN')
+			$locale = 'en_US';
+		else if ($locale == 'zh_ZH')
+			$locale = 'zh_CN';
+		else if ($locale == 'ja_JA')
+			$locale = 'ja_JP';
+		else if ($locale == 'cs_CS')
+			$locale = 'cs_CZ';
+
+		// reorder data
+		if (!empty($config['allowNotSame'])) {
+			$newdata = [];
+			foreach ($sourceStrings as $string) {
+				$key = array_search($string, $data[$code]['en-US'][$src]);
+				if ($key !== false)
+					$newdata[] = $data[$code][str_replace('_', '-', $locale)][$src][$key];
+			}
+			$data[$code][str_replace('_', '-', $locale)][$src] = $newdata;
+		}
+
+		// return translated data
+		return $onlyKeys ? $data[$code]['config'][$src] : $data[$code][str_replace('_', '-', $locale)][$src];
+	}
+
+
+	// LOAD TRANSLATED STRINGS FROM FILES
+	// return $data[source] = translation
+	public function loadCSV(array $files, bool $onlyKeys = false) {
+
+		$data = [];
+
+		foreach ($files as $file) {
+
+			if (!is_file($file))
+				continue;
+
+			$resource = fopen($file, 'rb');
+
+			while (($line = fgetcsv($resource, 2500)) !== false) {
+				if (!empty($line[0]) && !empty($line[1]) && empty($data[$line[0]]))
+					$data[$line[0]] = trim(stripslashes($line[1]));
+			}
+
+			fclose($resource);
+		}
+
+		return $onlyKeys ? array_keys($data) : $data;
+	}
+
+	public function loadYML(array $files) {
+
+		$data = [];
+
+		foreach ($files as $file) {
+
+			if (!is_file($file))
+				continue;
+
+			$resource = fopen($file, 'rb');
+
+			while (($line = fgets($resource, 2500)) !== false) {
+				$pos = mb_stripos($line, ': ');
+				if ($pos !== false) {
+					$line = [mb_substr($line, 0, $pos), mb_substr($line, $pos + 2)];
+					$data[trim($line[0])] = trim(stripslashes($line[1]), " \t\n\r\0\x0B\"");
+				}
+			}
+
+			fclose($resource);
+		}
+
+		ksort($data);
+		return $data;
+	}
+
+	public function loadPO(array $files) {
+		$data = [];
+		$this->readPo($data, $files, false);
+		return $data;
+	}
+
+
+	// SEARCH STRINGS TO TRANSLATE
+	//  XML <parent translate="child"><child>...</child></parent>
+	//  PHP >__(...) link(...) h2(...) h3(...) >_(...)
+	// RUBY  l(:...)
+	// return $data[] = source
+	public function searchAndReadXML(array &$data, array $files) {
+
+		foreach ($files as $file) {
+
+			if (!is_file($file))
+				continue;
+
+			if (mb_stripos($file, 'ws') === false) {
+
+				$xslDoc = new DOMDocument();
+				$xslDoc->load('./translate.xsl');
+				$xmlDoc = new DOMDocument();
+				$xmlDoc->load($file);
+
+				$processor = new XSLTProcessor();
+				$processor->importStylesheet($xslDoc);
+				$strings = $processor->transformToXml($xmlDoc);
+
+				if (mb_strlen($strings) > 5) {
+
+					$strings = explode('§', $strings);
+					foreach ($strings as $string) {
+						if (!empty($string) && !in_array($string, $data))
+							$data[] = str_replace('`', '"', $string);
+					}
+				}
+			}
+		}
+	}
+
+	public function searchAndReadPHP(array &$data, array $files) {
+
+		$regex = '((?:"([^"\\\\]*(?:\\\\.[^"\\\\]*)*(?![^\\\\]\\\\))")|(?:\'([^\'\\\\]*(?:\\\\.[^\'\\\\]*)*(?![^\\\\]\\\\))\'))';
+
+		foreach ($files as $file) {
+
+			if (!is_file($file))
+				continue;
+
+			preg_match_all('#(?:>__|link|h2|h3)\('.$regex.'#', file_get_contents($file), $strings);
+
+			foreach ($strings[1] as $string) {
+				$string = mb_substr($string, 1, -1);
+				$string = str_replace(['\\\'','\\\"'], ['\'','\"'], $string);
+				if (!empty($string) && !in_array($string, $data))
+					$data[] = $string;
+			}
+
+			preg_match_all('#>_\('.$regex.'#', file_get_contents($file), $strings);
+
+			foreach ($strings[1] as $string) {
+				$string = mb_substr($string, 1, -1);
+				$string = str_replace(['\\\'','\\\"'], ['\'','\"'], $string);
+				if (!empty($string) && !in_array(' '.$string, $data))
+					$data[] = ' '.$string;
+			}
+		}
+	}
+
+	public function searchAndReadRB(array &$data, array $files, string $search) {
+
+		$regex = '# l\(:([^),]+)[),]#';
+
+		foreach ($files as $file) {
+
+			if (!is_file($file))
+				continue;
+
+			preg_match_all($regex, file_get_contents($file), $strings);
+
+			foreach ($strings[1] as $string) {
+				if ((mb_stripos($string, $search) !== false) || (mb_stripos($string, 'permission_') !== false)) {
+					if (!empty($string) && !in_array($string, $data))
+						$data[] = $string;
+				}
+			}
+		}
+	}
+
+	public function readPo(array &$data, array $files, bool $key = true) {
+
+		foreach ($files as $file) {
+
+			if (!is_file($file))
+				continue;
+
+			$lines = explode("\n", file_get_contents($file));
+			$ready = false;
+			$multi = false;
+
+			foreach ($lines as $line) {
+				if (!$ready) {
+					if (!empty($line) && (strncmp($line, '#', 1) === 0))
+						$ready = true;
+				}
+				else if (!empty($line)) {
+					if ($key) {
+						if ($line == 'msgid ""')
+							$multi = true;
+						else if ($multi && (strncmp($line, '"', 1) === 0))
+							$data[] = preg_replace('#^ | $#', '§', trim($line, '"'));
+						else if ($multi && ($line[0] != '"'))
+							$multi = false;
+						else if (mb_strpos($line, 'msgid "') !== false)
+							$data[] = preg_replace('#^ | $#', '§', trim(str_replace('msgid ', '', $line), '"'));
+					}
+					else if ($line == 'msgstr ""')
+						$multi = true;
+					else if ($multi && (strncmp($line, '"', 1) === 0))
+						$data[] = preg_replace('#^ | $#', '§', trim($line, '"'));
+					else if ($multi && ($line[0] != '"'))
+						$multi = false;
+					else if (mb_strpos($line, 'msgstr "') !== false)
+						$data[] = preg_replace('#^ | $#', '§', trim(str_replace('msgstr ', '', $line), '"'));
+				}
+			}
+		}
+	}
+}
+
+$obj = new Translate();
+require_once('translate.conf.php');
+$obj->run($argv);
