@@ -1,9 +1,9 @@
 <?php
 /**
  * Created L/10/12/2012
- * Updated V/12/06/2020
+ * Updated D/21/02/2021
  *
- * Copyright 2008-2020 | Fabrice Creuzot (luigifab) <code~luigifab~fr>
+ * Copyright 2008-2021 | Fabrice Creuzot (luigifab) <code~luigifab~fr>
  * https://www.luigifab.fr/ + https://github.com/luigifab/translator
  *
  * This program is free software, you can redistribute it or modify
@@ -29,9 +29,9 @@ if (PHP_SAPI != 'cli')
 
 class Translate {
 
-	public const VERSION = '1.0.0';
+	public const VERSION = '1.1.0';
 
-	public function run($argv) {
+	public function run(array $argv) {
 
 		global $openMageDefault;
 		global $updateTranslationOpenMageModule;
@@ -121,10 +121,13 @@ class Translate {
 		foreach ($files as $file) {
 
 			// load strings to translate from JS
-			$key = mb_substr($file, mb_strripos($file, '/') + 1);
-			$template = file_get_contents($file);
-			$sourceStrings = $this->loadService($config, 'en_US', $key, $template, [], false, true);
+			$key = mb_substr($file, mb_strrpos($file, '/') + 1);
 
+			$template = file_get_contents($file);
+			if (mb_stripos($template, '// auto start') === false)
+				continue;
+
+			$sourceStrings = $this->loadService($config, 'en_US', $key, $template, [], false, true);
 			if ($sourceStrings === false)
 				continue;
 
@@ -160,6 +163,18 @@ class Translate {
 			exec('find '.$config['dir'].'app/ -name "*.php"', $files2);
 			sort($files2);
 
+
+			if (!empty($config['exclude'])) {
+				foreach ($files1 as $idx => $file) {
+					if (mb_stripos($file, $config['exclude']) !== false)
+						unset($files1[$idx]);
+				}
+				foreach ($files2 as $idx => $file) {
+					if (mb_stripos($file, $config['exclude']) !== false)
+						unset($files2[$idx]);
+				}
+			}
+
 			$sourceStrings = empty($config['sourceStringsBefore']) ? [] : $config['sourceStringsBefore'];
 			$this->searchAndReadXML($sourceStrings, $files1);
 			$this->searchAndReadPHP($sourceStrings, $files2);
@@ -173,7 +188,7 @@ class Translate {
 		// generate CSV
 		foreach ($config['locales'] as $locale) {
 
-			echo ' ',str_pad(mb_substr($locale, 0, 5), 6, ' ');
+			echo ' ',str_pad(mb_substr($locale, 0, 5), 6);
 
 			// load translated strings from CSV files, and from TSV service
 			$file = $config['dir'].'app/locale/'.$locale.'/'.$config['vendor'].'_'.$config['name'].'.csv';
@@ -193,13 +208,13 @@ class Translate {
 		foreach ($emails as $email) {
 
 			// load template and strings to translate from TSV service
-			$key = mb_substr($email, mb_strripos($email, '/') + 1);
+			$key = mb_substr($email, mb_strrpos($email, '/') + 1);
 			$template = file_get_contents($email);
 			$sourceStrings = $this->loadService($config, 'en_US', $key, $template);
 
 			foreach ($config['locales'] as $locale) {
 
-				echo ' ',str_pad(mb_substr($locale, 0, 5), 6, ' ');
+				echo ' ',str_pad(mb_substr($locale, 0, 5), 6);
 				if (!is_dir($config['dir'].'app/locale/'.$locale.'/template/email/')) {
 					echo  ' (template/email directory does not exist)',"\n";
 					continue;
@@ -215,16 +230,13 @@ class Translate {
 			}
 
 			// copy to en_XX HTML files
-			if (!in_array('en_AU', $config['locales']))
-				copy($email, str_replace('en_US', 'en_AU', $email));
-			if (!in_array('en_CA', $config['locales']))
-				copy($email, str_replace('en_US', 'en_CA', $email));
-			if (!in_array('en_GB', $config['locales']))
-				copy($email, str_replace('en_US', 'en_GB', $email));
-			if (!in_array('en_IE', $config['locales']))
-				copy($email, str_replace('en_US', 'en_IE', $email));
-			if (!in_array('en_NZ', $config['locales']))
-				copy($email, str_replace('en_US', 'en_NZ', $email));
+			foreach (['en_AU', 'en_CA', 'en_GB', 'en_IE', 'en_NZ'] as $to) {
+				if (!in_array($to, $config['locales'])) {
+					if (!is_dir($config['dir'].'app/locale/'.$to.'/template/email'))
+						mkdir($config['dir'].'app/locale/'.$to.'/template/email', 0755, true);
+					copy($email, str_replace('en_US', $to, $email));
+				}
+			}
 		}
 
 		// generate JS (apijs magic key)
@@ -255,7 +267,7 @@ class Translate {
 		// generate YML
 		foreach ($config['locales'] as $locale) {
 
-			echo ' ',str_pad(mb_substr($locale, 0, 5), 6, ' ');
+			echo ' ',str_pad(mb_substr($locale, 0, 5), 6);
 
 			// load translated strings from YML files, and from TSV service
 			$file = $config['dir'].'config/locales/'.$locale.'.yml';
@@ -299,7 +311,7 @@ class Translate {
 		// generate PO
 		foreach ($config['locales'] as $locale) {
 
-			echo ' ',str_pad(mb_substr($locale, 0, 5), 6, ' ');
+			echo ' ',str_pad(mb_substr($locale, 0, 5), 6);
 
 			// load translated strings from PO files, and from TSV service
 			$file = $config['dir'].$locale.'.po';
@@ -312,7 +324,7 @@ class Translate {
 
 			// regenerate PO
 			foreach ($config['gettext'] as $cmd) {
-				if (mb_strpos($cmd, 'msgmerge') !== false) {
+				if (mb_stripos($cmd, 'msgmerge') !== false) {
 					echo ' run: ',$cmd,"\n";
 					exec($cmd);
 				}
@@ -373,7 +385,7 @@ class Translate {
 		// generate CSV
 		foreach ($config['locales'] as $locale) {
 
-			echo ' ',str_pad(mb_substr($locale, 0, 5), 6, ' ');
+			echo ' ',str_pad(mb_substr($locale, 0, 5), 6);
 
 			// load translated strings from CSV files, and from TSV service
 			$file = $config['dir'].$locale.'.csv';
@@ -435,7 +447,7 @@ class Translate {
 
 		foreach ($locales as $locale) {
 
-			if (($locale !== 'en_US') && (mb_strlen($locale) === 5)) {
+			if (($locale !== 'en_US') && (mb_strlen($locale) == 5)) {
 
 				$files = [];
 				$translatedStrings = [];
@@ -485,38 +497,68 @@ class Translate {
 	// CREATE FINAL FILES
 	private function writeFile(string $file, string $final) {
 
-		file_put_contents($file, $final);
-		echo realpath($file),"\n";
+		if (empty($final)) {
+			echo "\n";
+			if (is_file($file))
+				unlink($file);
+		}
+		else {
+			file_put_contents($file, $final);
+			echo realpath($file),"\n";
+		}
 	}
 
 	private function writeOpenMageFile(array $config, string $locale, string $file, string $final) {
 
-		file_put_contents($file, $final);
-		echo realpath($file),"\n";
-		if (($locale == 'fr_FR') && !in_array('fr_CA', $config['locales']))
-			file_put_contents(str_replace($locale, 'fr_CA', $file), $final);
-		if (($locale == 'it_IT') && !in_array('it_CH', $config['locales']))
-			file_put_contents(str_replace($locale, 'it_CH', $file), $final);
-		if (($locale == 'de_DE') && !in_array('de_CH', $config['locales']))
-			file_put_contents(str_replace($locale, 'de_CH', $file), $final);
-		if (($locale == 'de_DE') && !in_array('de_AT', $config['locales']))
-			file_put_contents(str_replace($locale, 'de_AT', $file), $final);
-		if (($locale == 'es_ES') && !in_array('es_AR', $config['locales']))
-			file_put_contents(str_replace($locale, 'es_AR', $file), $final);
-		if (($locale == 'es_ES') && !in_array('es_CL', $config['locales']))
-			file_put_contents(str_replace($locale, 'es_CL', $file), $final);
-		if (($locale == 'es_ES') && !in_array('es_CO', $config['locales']))
-			file_put_contents(str_replace($locale, 'es_CO', $file), $final);
-		if (($locale == 'es_ES') && !in_array('es_CR', $config['locales']))
-			file_put_contents(str_replace($locale, 'es_CR', $file), $final);
-		if (($locale == 'es_ES') && !in_array('es_MX', $config['locales']))
-			file_put_contents(str_replace($locale, 'es_MX', $file), $final);
-		if (($locale == 'es_ES') && !in_array('es_PA', $config['locales']))
-			file_put_contents(str_replace($locale, 'es_PA', $file), $final);
-		if (($locale == 'es_ES') && !in_array('es_PE', $config['locales']))
-			file_put_contents(str_replace($locale, 'es_PE', $file), $final);
-		if (($locale == 'es_ES') && !in_array('es_VE', $config['locales']))
-			file_put_contents(str_replace($locale, 'es_VE', $file), $final);
+		if (empty($final)) {
+			echo "\n";
+			if (is_file($file))
+				unlink($file);
+			foreach ([
+				['fr_FR', 'fr_CA'],
+				['fr_FR', 'fr_CH'],
+				['it_IT', 'it_CH'],
+				['de_DE', 'de_CH'],
+				['de_DE', 'de_AT'],
+				['es_ES', 'es_AR'],
+				['es_ES', 'es_CL'],
+				['es_ES', 'es_CO'],
+				['es_ES', 'es_CR'],
+				['es_ES', 'es_MX'],
+				['es_ES', 'es_PA'],
+				['es_ES', 'es_PE'],
+				['es_ES', 'es_VE']
+			] as [$from, $to]) {
+				if (($locale == $from) && !in_array($to, $config['locales']) && is_file($file))
+					unlink(str_replace($locale, $to, $file));
+			}
+		}
+		else {
+			file_put_contents($file, $final);
+			echo realpath($file),"\n";
+			foreach ([
+				['fr_FR', 'fr_CA'],
+				['fr_FR', 'fr_CH'],
+				['it_IT', 'it_CH'],
+				['de_DE', 'de_CH'],
+				['de_DE', 'de_AT'],
+				['es_ES', 'es_AR'],
+				['es_ES', 'es_CL'],
+				['es_ES', 'es_CO'],
+				['es_ES', 'es_CR'],
+				['es_ES', 'es_MX'],
+				['es_ES', 'es_PA'],
+				['es_ES', 'es_PE'],
+				['es_ES', 'es_VE']
+			] as [$from, $to]) {
+				if (($locale == $from) && !in_array($to, $config['locales'])) {
+					$dir = (mb_strpos($file, 'template/email') === false) ? 'app/locale/'.$to : 'app/locale/'.$to.'/template/email';
+					if (!is_dir($config['dir'].$dir))
+						mkdir($config['dir'].$dir, 0755, true);
+					file_put_contents(str_replace($locale, $to, $file), $final);
+				}
+			}
+		}
 	}
 
 	private function generateCSV(array $sourceStrings, array $translatedStrings) {
@@ -524,6 +566,7 @@ class Translate {
 		$data = [];
 
 		foreach ($sourceStrings as $i => $string) {
+			// TODO pour premier export
 			if (!empty($translatedStrings[$i]) && ($translatedStrings[$i] != $string))
 				$data[] = '"'.str_replace('"', '""', $string).'","'.str_replace('"', '""', $translatedStrings[$i]).'"';
 		}
@@ -594,6 +637,8 @@ class Translate {
 				$locale = 'ja';
 			else if ($locale == 'cs_CZ')
 				$locale = 'cs';
+			else if ($locale == 'uk_UA')
+				$locale = 'uk';
 
 			$tmp = mb_substr($locale, 0, 2);
 
@@ -629,7 +674,7 @@ class Translate {
 		}
 
 		return mb_substr($template, 0, mb_stripos($template, '// auto start') + 14).
-			($forAPIJS ? mb_substr(implode("\n", $data), 0, -1)."\n\t\t" : implode("\n", $data)."\n\t").
+			($forAPIJS ? mb_substr(implode("\n", $data), 0, -1)."\n\t\t" : implode("\n", $data)."\n\t\t").
 			mb_substr($template, mb_stripos($template, '// auto end'));
 	}
 
@@ -645,24 +690,24 @@ class Translate {
 				$string = preg_replace('#^§|§$#u', ' ', $string);
 				$translatedString = preg_replace('#^§|§$#u', ' ', $translatedStrings[$i]);
 
-				if (mb_strpos($originalContent, 'msgid "'.$string.'"') !== false) {
+				if (mb_stripos($originalContent, 'msgid "'.$string.'"') !== false) {
 					$data[] = 'msgid "'.$string.'"';
 					$data[] = 'msgstr "'.$translatedString.'"';
 					$data[] = '';
 				}
-				else if (mb_strpos($originalContent, "msgid \"\"\n\"".$string) !== false) {
+				else if (mb_stripos($originalContent, "msgid \"\"\n\"".$string) !== false) {
 					$cnt = -2;
 					$data[] = 'msgid ""';
 					$data[] = '"'.$string.'"';
 					$data[] = 'msgstr ""';
 					$data[] = '"'.$translatedString.'"';
 				}
-				else if (mb_strpos($originalContent, "\"\n\"".$string."\"\nmsgstr") !== false) {
+				else if (mb_stripos($originalContent, "\"\n\"".$string."\"\nmsgstr") !== false) {
 					array_splice($data, $cnt--, 0, ['"'.$string.'"']);
 					$data[] = '"'.$translatedString.'"';
 					$data[] = '';
 				}
-				else if (mb_strpos($originalContent, "\"\n\"".$string.'"') !== false) {
+				else if (mb_stripos($originalContent, "\"\n\"".$string.'"') !== false) {
 					array_splice($data, $cnt--, 0, ['"'.$string.'"']);
 					$data[] = '"'.$translatedString.'"';
 				}
@@ -737,6 +782,7 @@ class Translate {
 						exit("\nfatal: column config not found in TSV!\n");
 					if (($enus === false) || ($enus < 0))
 						exit("\nfatal: column en-US not found in TSV!\n");
+					$enus = (int) $enus; // (yes)
 				}
 				else if (!$found) {
 					if (mb_strtolower($cells[$keys]) == mb_strtolower($code))
@@ -824,7 +870,7 @@ class Translate {
 					$allow = false;
 					foreach ($strs as $str) {
 						if (mb_stripos($string, $str) !== false) {
-							// special in the TSV for new line
+							// special in the TSV for new lines
 							foreach (array_keys($data[$code]) as $value)
 								$data[$code][$value][$src][$i] = str_replace(' #<', "\n<", $data[$code][$value][$src][$i]);
 							$allow = true;
@@ -839,6 +885,8 @@ class Translate {
 						echo "\n",'       string expected: ',$string;
 						if (isset($data[$code]['en-US'][$src][$i + 1]))
 						echo "\n",'           next string: ',$data[$code]['en-US'][$src][$i + 1];
+						// debug
+						//echo "\n"; print_r($sourceStrings);
 						exit("\n");
 					}
 				}
@@ -859,6 +907,8 @@ class Translate {
 			$locale = 'ja_JP';
 		else if ($locale == 'cs_CS')
 			$locale = 'cs_CZ';
+		else if ($locale == 'uk_UK')
+			$locale = 'uk_UA';
 
 		// reorder data
 		if (!empty($config['allowNotSame'])) {
@@ -890,6 +940,7 @@ class Translate {
 			$resource = fopen($file, 'rb');
 
 			while (($line = fgetcsv($resource, 2500)) !== false) {
+				$line = (array) $line; // (yes)
 				if (!empty($line[0]) && !empty($line[1]) && empty($data[$line[0]]))
 					$data[$line[0]] = trim(stripslashes($line[1]));
 			}
@@ -922,7 +973,6 @@ class Translate {
 			fclose($resource);
 		}
 
-		ksort($data);
 		return $data;
 	}
 
@@ -934,9 +984,16 @@ class Translate {
 
 
 	// SEARCH STRINGS TO TRANSLATE
-	//  XML <parent translate="child"><child>...</child></parent>
-	//  PHP >__(...) link(...) h2(...) h3(...) >_(...)
-	// RUBY  l(:...)
+	//   XML <parent translate="child"><child>...</child></parent>
+	//   PHP >_(...) >__(...) link(...) h2(...) h3(...)
+	//  RUBY  l(:...)
+	// example
+	//  >__('Created At')  => it/him/he
+	//  >_('Created At')   => she/her
+	// example
+	//  >__('%d days (%d month)')  => 1
+	//  >_('%d days (%d months)')  => 2-4
+	//  >__('%d days (%d months)') => 5+
 	// return $data[] = source
 	public function searchAndReadXML(array &$data, array $files) {
 
@@ -977,22 +1034,16 @@ class Translate {
 			if (!is_file($file))
 				continue;
 
-			preg_match_all('#(?:>__|link|h2|h3)\('.$regex.'#', file_get_contents($file), $strings);
+			preg_match_all('#(>_|>__|link|h2|h3)\('.$regex.'#', file_get_contents($file), $strings);
 
-			foreach ($strings[1] as $string) {
-				$string = mb_substr($string, 1, -1);
-				$string = str_replace(['\\\'','\\\"'], ['\'','\"'], $string);
-				if (!empty($string) && !in_array($string, $data))
-					$data[] = $string;
-			}
+			foreach ($strings[4] as $idx => $string) {
 
-			preg_match_all('#>_\('.$regex.'#', file_get_contents($file), $strings);
+				$string  = empty($string) ? mb_substr($strings[2][$idx], 1, -1) : $string;
+				$string  = str_replace(['\\\'','\\\"'], ['\'','\"'], $string);
+				$special = ($strings[1][$idx] == '>_') ? ' ' : '';
 
-			foreach ($strings[1] as $string) {
-				$string = mb_substr($string, 1, -1);
-				$string = str_replace(['\\\'','\\\"'], ['\'','\"'], $string);
-				if (!empty($string) && !in_array(' '.$string, $data))
-					$data[] = ' '.$string;
+				if (!empty($string) && !in_array($special.$string, $data))
+					$data[] = $special.$string;
 			}
 		}
 	}
@@ -1041,7 +1092,7 @@ class Translate {
 							$data[] = preg_replace('#^ | $#', '§', trim($line, '"'));
 						else if ($multi && ($line[0] != '"'))
 							$multi = false;
-						else if (mb_strpos($line, 'msgid "') !== false)
+						else if (mb_stripos($line, 'msgid "') !== false)
 							$data[] = preg_replace('#^ | $#', '§', trim(str_replace('msgid ', '', $line), '"'));
 					}
 					else if ($line == 'msgstr ""')
@@ -1050,7 +1101,7 @@ class Translate {
 						$data[] = preg_replace('#^ | $#', '§', trim($line, '"'));
 					else if ($multi && ($line[0] != '"'))
 						$multi = false;
-					else if (mb_strpos($line, 'msgstr "') !== false)
+					else if (mb_stripos($line, 'msgstr "') !== false)
 						$data[] = preg_replace('#^ | $#', '§', trim(str_replace('msgstr ', '', $line), '"'));
 				}
 			}

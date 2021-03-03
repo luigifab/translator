@@ -3,7 +3,7 @@
  * Created L/10/12/2012
  * Updated J/25/04/2019
  *
- * Copyright 2012-2020 | Fabrice Creuzot (luigifab) <code~luigifab~fr>
+ * Copyright 2012-2021 | Fabrice Creuzot (luigifab) <code~luigifab~fr>
  * https://www.luigifab.fr/
  *
  * This program is free software, you can redistribute it or modify
