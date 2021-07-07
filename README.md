@@ -1,4 +1,4 @@
-# Translator
+# translator
 
 My tool to extract translations and update translations files (CSV, YML, PO, JS) for PHP 7.2 / 7.3 / 7.4 / 8.0.
 
@@ -11,21 +11,21 @@ _This program is free software, you can redistribute it or modify it under the t
  * Configuration with `$updateTranslationOpenMageModule` in `translate.conf.php`
  * Run `php translate.php openmage-module`
 
-Read the examples in _translate.conf.php_ to write your own configuration. Be carefull, the _search_ option is not yet implemented.
+Read the examples in _translate.conf.php_ to write your own configuration.
 
 ### Translate plugin for [Redmine](https://github.com/redmine/redmine)
 
  * Configuration with `$updateTranslationRedminePlugin` in `translate.conf.php`
  * Run `php translate.php redmine-plugin`
 
-Read the examples in _translate.conf.php_ to write your own configuration. Be carefull, the _search_ option is not yet implemented.
+Read the examples in _translate.conf.php_ to write your own configuration.
 
 ### Translate program with gettext
 
  * Configuration with `$updateTranslationPo` in `translate.conf.php`
  * Run `php translate.php po`
 
-Read the examples in _translate.conf.php_ to write your own configuration. Be carefull, the _search_ option is not yet implemented.
+Read the examples in _translate.conf.php_ to write your own configuration.
 
 ### Translate website
 

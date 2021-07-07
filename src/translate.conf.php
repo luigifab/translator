@@ -1,15 +1,15 @@
 <?php
 
-// read https://github.com/luigifab/translator
+//     read https://github.com/luigifab/translator
 // $dir     is the base directory
-// $search  is optionnal and it is relative to $dir
+// $search  is optionnal (except for updateTranslationWebsite) and it is relative to $dir
 // $service please read the 'EXAMPLE' tab of this google document:
 //          https://docs.google.com/spreadsheets/d/1UUpKZ-YAAlcfvGHYwt6aUM9io390j0-fIL0vMRh1pW0/edit?usp=sharing
 $langs   = ['fr_FR','fr_CA','pt_PT','pt_BR','it_IT','es_ES','de_DE','pl_PL','nl_NL','cs_CZ','sk_SK','uk_UA','tr_TR','ru_RU','ja_JP','zh_CN'];
 $example = [
 	[
 		'dir'     => './example/',
-		'search'  => ['app/code/local/Example/Example/','app/design/adm/def/def/layout/example/example.xml'], // optionnal
+		'search'  => ['app/code/local/Example/Example/','app/design/adm/def/def/layout/example/example.xml'], // optionnal*
 		'vendor'  => 'Example|Custom',
 		'name'    => 'Example|Apijs',
 		'locales' => $langs,
@@ -23,7 +23,7 @@ $example = [
 ];
 
 ////////////////////////////////////////////////////////////////////////////////
-// MODULES FOR OPENMAGE
+// MODULES FOR OPENMAGE (XML / PHTML / PHP => CSV)
 $openMageDefault = './locales/Mage_*.csv';
 $updateTranslationOpenMageModule = [
 	[
@@ -76,7 +76,7 @@ $updateTranslationOpenMageModule = [
 		'dir'     => './mage-minifier/src/',
 		'vendor'  => 'Luigifab',
 		'name'    => 'Minifier',
-		'locales' => ['fr_FR'],
+		'locales' => $langs,
 		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
 				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv'
 	], [
@@ -107,7 +107,7 @@ $updateTranslationOpenMageModule = [
 ];
 
 ////////////////////////////////////////////////////////////////////////////////
-// PLUGINS FOR REDMINE
+// PLUGINS FOR REDMINE (RB / ERB => YML)
 $updateTranslationRedminePlugin = [
 	[
 		'dir'     => './redmine-apijs/src/',
@@ -121,12 +121,12 @@ $updateTranslationRedminePlugin = [
 ];
 
 ////////////////////////////////////////////////////////////////////////////////
-// PO FILES
+// PO FILES (PO => PO)
 $updateTranslationPo = [
 	[
 		'dir'     => './gtk-awf/src/po/',
 		'gettext' => [
-			'xgettext -d awf -o ./gtk-awf/src/awf.pot -k_ -s ./gtk-awf/src/awf.c',
+			'xgettext --keyword=_app -d awf -o ./gtk-awf/src/awf.pot -k_ -s ./gtk-awf/src/awf.c',
 			'msgmerge ./gtk-awf/src/po/fr.po ./gtk-awf/src/awf.pot -o ./gtk-awf/src/po/fr.po',
 		],
 		'vendor'  => 'Luigifab',
@@ -139,7 +139,7 @@ $updateTranslationPo = [
 ];
 
 ////////////////////////////////////////////////////////////////////////////////
-// APIJS (luigifab.fr/apijs)
+// APIJS (JS => JS / luigifab.fr/apijs)
 $updateTranslationApijs = [
 	[
 		'dir'     => './apijs/src/',
@@ -153,7 +153,7 @@ $updateTranslationApijs = [
 ];
 
 ////////////////////////////////////////////////////////////////////////////////
-// CUSTOM (luigifab.fr)
+// CUSTOM (PHP => CSV)
 $updateTranslationWebsite = [
 	[
 		'dir'     => './locales/',
@@ -164,6 +164,7 @@ $updateTranslationWebsite = [
 			'../../apijs-dev/dialog.php',    '../../apijs/dialog.php',
 			'../../apijs-dev/upload.php',    '../../apijs/upload.php',
 			'../../apijs-dev/slideshow.php', '../../apijs/slideshow.php',
+			'../../apijs-dev/player.php',
 			'../../apijs-dev/install.php',   '../../apijs/install.php',
 			'../../openmage/cronlog.php',
 			'../../openmage/modules.php',
@@ -205,7 +206,7 @@ $updateTranslationWebsite = [
 ];
 
 ////////////////////////////////////////////////////////////////////////////////
-// FULL OPENMAGE TRANSLATE
+// FULL OPENMAGE TRANSLATE (XML / PHTML / PHP => CSV)
 $updateTranslationOpenMageFull = [
 	'dir'   => '../../openmage-lts/', // a default installation
 	'packs' => ['../zzx/app/locale/'],

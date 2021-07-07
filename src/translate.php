@@ -1,7 +1,7 @@
 <?php
 /**
  * Created L/10/12/2012
- * Updated D/21/02/2021
+ * Updated D/20/06/2021
  *
  * Copyright 2008-2021 | Fabrice Creuzot (luigifab) <code~luigifab~fr>
  * https://www.luigifab.fr/ + https://github.com/luigifab/translator
@@ -29,7 +29,7 @@ if (PHP_SAPI != 'cli')
 
 class Translate {
 
-	public const VERSION = '1.1.0';
+	public const VERSION = '1.2.0';
 
 	public function run(array $argv) {
 
@@ -163,7 +163,6 @@ class Translate {
 			exec('find '.$config['dir'].'app/ -name "*.php"', $files2);
 			sort($files2);
 
-
 			if (!empty($config['exclude'])) {
 				foreach ($files1 as $idx => $file) {
 					if (mb_stripos($file, $config['exclude']) !== false)
@@ -174,15 +173,22 @@ class Translate {
 						unset($files2[$idx]);
 				}
 			}
-
-			$sourceStrings = empty($config['sourceStringsBefore']) ? [] : $config['sourceStringsBefore'];
-			$this->searchAndReadXML($sourceStrings, $files1);
-			$this->searchAndReadPHP($sourceStrings, $files2);
 		}
 		else {
-			exit("\nnot yet implemented\n"); // TODO
+			$files1 = [];
+			$files2 = [];
+
+			foreach ($config['search'] as $file) {
+				if (mb_substr($file, -4) == '.xml')
+					$files1[] = $config['dir'].$file;
+				else
+					$files2[] = $config['dir'].$file;
+			}
 		}
 
+		$sourceStrings = empty($config['sourceStringsBefore']) ? [] : $config['sourceStringsBefore'];
+		$this->searchAndReadXML($sourceStrings, $files1);
+		$this->searchAndReadPHP($sourceStrings, $files2);
 		$this->mergeStrings($config, $sourceStrings, $ignoreStrings);
 
 		// generate CSV
@@ -248,6 +254,7 @@ class Translate {
 	private function updateTranslationRedminePlugin(array $ignoreStrings, array $config) {
 
 		// search strings to translate
+
 		if (empty($config['search'])) {
 
 			$files = [];
@@ -255,13 +262,21 @@ class Translate {
 			exec('find '.$config['dir'].' -name "*.erb"', $files);
 			sort($files);
 
-			$sourceStrings = empty($config['sourceStringsBefore']) ? [] : $config['sourceStringsBefore'];
-			$this->searchAndReadRB($sourceStrings, $files, $config['filter']);
+			if (!empty($config['exclude'])) {
+				foreach ($files as $idx => $file) {
+					if (mb_stripos($file, $config['exclude']) !== false)
+						unset($files[$idx]);
+				}
+			}
 		}
 		else {
-			exit("\nnot yet implemented\n"); // TODO
+			$files = [];
+			foreach ($config['search'] as $file)
+				$files[] = $config['dir'].$file;
 		}
 
+		$sourceStrings = empty($config['sourceStringsBefore']) ? [] : $config['sourceStringsBefore'];
+		$this->searchAndReadRB($sourceStrings, $files, $config['filter']);
 		$this->mergeStrings($config, $sourceStrings, $ignoreStrings);
 
 		// generate YML
@@ -299,13 +314,21 @@ class Translate {
 			exec('find '.$config['dir'].' -name "*.po"', $files);
 			sort($files);
 
-			$sourceStrings = empty($config['sourceStringsBefore']) ? [] : $config['sourceStringsBefore'];
-			$this->readPo($sourceStrings, $files);
+			if (!empty($config['exclude'])) {
+				foreach ($files as $idx => $file) {
+					if (mb_stripos($file, $config['exclude']) !== false)
+						unset($files[$idx]);
+				}
+			}
 		}
 		else {
-			exit("\nnot yet implemented\n"); // TODO
+			$files = [];
+			foreach ($config['search'] as $file)
+				$files[] = $config['dir'].$file;
 		}
 
+		$sourceStrings = empty($config['sourceStringsBefore']) ? [] : $config['sourceStringsBefore'];
+		$this->readPo($sourceStrings, $files);
 		$this->mergeStrings($config, $sourceStrings, $ignoreStrings);
 
 		// generate PO
@@ -364,22 +387,12 @@ class Translate {
 	private function updateTranslationWebsite(array $ignoreStrings, array $config) {
 
 		// search strings to translate
-		if (empty($config['search'])) {
-			exit("\nnot yet implemented\n"); // TODO
-		}
-		else {
-			$files = [];
-			foreach ($config['search'] as $mask) {
-				if (mb_stripos($mask, '*') !== false)
-					exec('find '.$config['dir'].$mask.' -name "*.php"', $files);
-				else
-					$files[] = $config['dir'].$mask;
-			}
+		$files = [];
+		foreach ($config['search'] as $file)
+			$files[] = $config['dir'].$file;
 
-			$sourceStrings = empty($config['sourceStringsBefore']) ? [] : $config['sourceStringsBefore'];
-			$this->searchAndReadPHP($sourceStrings, $files);
-		}
-
+		$sourceStrings = empty($config['sourceStringsBefore']) ? [] : $config['sourceStringsBefore'];
+		$this->searchAndReadPHP($sourceStrings, $files);
 		$this->mergeStrings($config, $sourceStrings, $ignoreStrings);
 
 		// generate CSV
@@ -566,7 +579,6 @@ class Translate {
 		$data = [];
 
 		foreach ($sourceStrings as $i => $string) {
-			// TODO pour premier export
 			if (!empty($translatedStrings[$i]) && ($translatedStrings[$i] != $string))
 				$data[] = '"'.str_replace('"', '""', $string).'","'.str_replace('"', '""', $translatedStrings[$i]).'"';
 		}
@@ -917,6 +929,8 @@ class Translate {
 				$key = array_search($string, $data[$code]['en-US'][$src]);
 				if ($key !== false)
 					$newdata[] = $data[$code][str_replace('_', '-', $locale)][$src][$key];
+				else
+					$newdata[] = $string;
 			}
 			$data[$code][str_replace('_', '-', $locale)][$src] = $newdata;
 		}
