@@ -5,7 +5,7 @@
 // $search  is optionnal (except for updateTranslationWebsite) and it is relative to $dir
 // $service please read the 'EXAMPLE' tab of this google document:
 //          https://docs.google.com/spreadsheets/d/1UUpKZ-YAAlcfvGHYwt6aUM9io390j0-fIL0vMRh1pW0/edit?usp=sharing
-$langs   = ['fr_FR','fr_CA','pt_PT','pt_BR','it_IT','es_ES','de_DE','pl_PL','nl_NL','cs_CZ','sk_SK','uk_UA','tr_TR','ru_RU','ja_JP','zh_CN'];
+$langs   = ['fr_FR','fr_CA','pt_PT','pt_BR','it_IT','es_ES','de_DE','pl_PL','nl_NL','cs_CZ','sk_SK','uk_UA','ro_RO','hu_HU','el_GR','tr_TR','ru_RU','ja_JP','zh_CN'];
 $example = [
 	[
 		'dir'     => './example/',
@@ -66,13 +66,6 @@ $updateTranslationOpenMageModule = [
 		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
 				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv'
 	], [
-		'dir'     => './mage-paypalrefund/src/',
-		'vendor'  => 'Luigifab',
-		'name'    => 'Paypalrefund',
-		'locales' => $langs,
-		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
-				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv'
-	], [
 		'dir'     => './mage-minifier/src/',
 		'vendor'  => 'Luigifab',
 		'name'    => 'Minifier',
@@ -103,6 +96,13 @@ $updateTranslationOpenMageModule = [
 		'ignoreStrings' => ['{os2editor.help.'],
 		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
 				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv'
+	], [
+		'dir'     => './mage-paymentmax/src/',
+		'vendor'  => 'Kyrena',
+		'name'    => 'Paymentmax',
+		'locales' => $langs,
+		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
+				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv'
 	]
 ];
 
@@ -113,7 +113,7 @@ $updateTranslationRedminePlugin = [
 		'dir'     => './redmine-apijs/src/',
 		'vendor'  => 'Rluigifab',
 		'name'    => 'Apijs',
-		'locales' => ['en','fr','pt','pt-BR','it','es','de','pl','nl','cs','sk','uk','tr','ru','ja','zh'],
+		'locales' => ['en','fr','pt','pt-BR','it','es','de','pl','nl','cs','sk','uk','ro','hu','el','tr','ru','ja','zh'],
 		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
 				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv',
 		'filter'  => 'apijs_'
@@ -146,7 +146,7 @@ $updateTranslationApijs = [
 		'search'  => ['javascripts/i18n.js'],
 		'vendor'  => 'Custom',
 		'name'    => 'Apijs',
-		'locales' => ['en','fr','pt','pt-BR','it','es','de','pl','nl','cs','sk','uk','tr','ru','ja','zh'],
+		'locales' => ['en','fr','pt','pt-BR','it','es','de','pl','nl','cs','sk','uk','ro','hu','el','tr','ru','ja','zh'],
 		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
 				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv'
 	]
