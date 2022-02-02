@@ -40,12 +40,3 @@ Read the examples in _translate.conf.php_ to write your own configuration.
  * Run `php translate.php apijs`
 
 _Internal usage._
-
-### Regenerate translations files of [OpenMage](https://github.com/OpenMage/magento-lts)
-
- * Configuration with `$updateTranslationOpenMageFull` in `translate.conf.php`
- * Run `php translate.php openmage-full`
-
-Read the example in _translate.conf.php_ to write your own configuration.
-
-The **dir** option must contains a directory with a default OpenMage installation. All CSV files present in _app/locale/*/_ will be updated (expect *en_US*). The **packs** option must contains one or more directories that contains translations, for example the _app/locale/_ directory of [versedi/magento-locales](https://github.com/versedi/Magento-Locales) repository.
