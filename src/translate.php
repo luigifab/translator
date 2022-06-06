@@ -1,7 +1,7 @@
 <?php
 /**
  * Created L/10/12/2012
- * Updated V/21/01/2022
+ * Updated L/06/06/2022
  *
  * Copyright 2012-2022 | Fabrice Creuzot (luigifab) <code~luigifab~fr>
  * https://www.luigifab.fr/ + https://github.com/luigifab/translator
@@ -29,7 +29,7 @@ if (PHP_SAPI != 'cli')
 
 class Translate {
 
-	public const VERSION = '1.4.0';
+	public const VERSION = '1.4.1';
 
 	public function run(array $argv) {
 
@@ -93,8 +93,13 @@ class Translate {
 		// add data from config
 		if (!empty($config['sourceStringsAfter']))
 			$sourceStrings = array_merge($sourceStrings, $config['sourceStringsAfter']);
-		if (!empty($config['ignoreStrings']))
+
+		if (!empty($config['ignoreStrings'])) {
 			$ignoreStrings = array_merge($ignoreStrings, $config['ignoreStrings']);
+			// don't ignore strings in sourceStringsAfter
+			if (!empty($config['sourceStringsAfter']))
+				$ignoreStrings = array_diff($ignoreStrings, $config['sourceStringsAfter']);
+		}
 
 		// remove ignored strings
 		foreach ($sourceStrings as $i => $string) {

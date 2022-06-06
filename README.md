@@ -1,3 +1,5 @@
+Stop russian war. **🇺🇦 Free Ukraine!**
+
 # translator
 
 My tool to extract translations and update translations files (CSV, YML, PO, JS) for PHP 7.2 / 7.3 / 7.4 / 8.0 / 8.1.

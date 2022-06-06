@@ -34,7 +34,8 @@ $updateTranslationOpenMageModule = [
 		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
 				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv',
 		'nocheckStrings' => ['<p>Synchronization allow to synchronize'],
-		'ignoreStrings'  => ['<b>']
+		'ignoreStrings'  => ['<b>'],
+		'sourceStringsAfter' => ['Copy']
 	], [
 		'dir'     => './mage-cronlog/src/',
 		'vendor'  => 'Luigifab',
@@ -176,7 +177,7 @@ $updateTranslationWebsite = [
 			'../../redmine/apijs.php',
 			'../../adminer/shortcuts.php',
 			'../../gtk/human-theme.php',
-			'../../gtk/gpx2tiles.php',
+			'../../gtk/awf-extended.php',
 			'../../python/radexreader.php'
 		],
 		'vendor'  => 'Custom',
