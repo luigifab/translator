@@ -1,10 +1,10 @@
 <?php
 /**
  * Created L/10/12/2012
- * Updated L/06/06/2022
+ * Updated D/04/06/2023
  *
- * Copyright 2012-2022 | Fabrice Creuzot (luigifab) <code~luigifab~fr>
- * https://www.luigifab.fr/ + https://github.com/luigifab/translator
+ * Copyright 2012-2023 | Fabrice Creuzot (luigifab) <code~luigifab~fr>
+ * https://github.com/luigifab/translator
  *
  * This program is free software, you can redistribute it or modify
  * it under the terms of the GNU General Public License (GPL) as published
@@ -25,11 +25,11 @@ date_default_timezone_set('UTC');
 header('Content-Type: text/plain; charset=utf-8');
 
 if (PHP_SAPI != 'cli')
-	exit('Run me only with cli.');
+	exit(-1);
 
 class Translate {
 
-	public const VERSION = '1.4.1';
+	public const VERSION = '1.4.2';
 
 	public function run(array $argv) {
 
@@ -50,7 +50,10 @@ class Translate {
 
 			foreach ($updateTranslationOpenMageModule as $config) {
 				echo 'updateTranslationOpenMageModule: ',$config['vendor'],'/',$config['name'],"\n";
-				if (!is_dir($config['dir'])) exit("\nfatal: ".$config['dir']." does not exist!\n");
+				if (!is_dir($config['dir'])) {
+					echo "\nfatal: ",$config['dir']," does not exist!\n";
+					exit(-1);
+				}
 				$this->updateTranslationOpenMageModule($ignoreStrings, $config);
 			}
 		}
@@ -58,7 +61,10 @@ class Translate {
 		if (!empty($updateTranslationRedminePlugin) && in_array('redmine-plugin', $argv)) {
 			foreach ($updateTranslationRedminePlugin as $config) {
 				echo 'updateTranslationRedminePlugin: ',$config['vendor'],'/',$config['name'],"\n";
-				if (!is_dir($config['dir'])) exit("\nfatal: ".$config['dir']." does not exist!\n");
+				if (!is_dir($config['dir'])) {
+					echo "\nfatal: ",$config['dir']," does not exist!\n";
+					exit(-1);
+				}
 				$this->updateTranslationRedminePlugin([], $config);
 			}
 		}
@@ -66,7 +72,10 @@ class Translate {
 		if (!empty($updateTranslationPo) && in_array('po', $argv)) {
 			foreach ($updateTranslationPo as $config) {
 				echo 'updateTranslationPo: ',$config['vendor'],'/',$config['name'],"\n";
-				if (!is_dir($config['dir'])) exit("\nfatal: ".$config['dir']." does not exist!\n");
+				if (!is_dir($config['dir'])) {
+					echo "\nfatal: ",$config['dir']," does not exist!\n";
+					exit(-1);
+				}
 				$this->updateTranslationPo([], $config);
 			}
 		}
@@ -74,7 +83,10 @@ class Translate {
 		if (!empty($updateTranslationApijs) && in_array('apijs', $argv)) {
 			foreach ($updateTranslationApijs as $config) {
 				echo 'updateTranslationApijs: ',$config['vendor'],'/',$config['name'],"\n";
-				if (!is_dir($config['dir'])) exit("\nfatal: ".$config['dir']." does not exist!\n");
+				if (!is_dir($config['dir'])) {
+					echo "\nfatal: ",$config['dir']," does not exist!\n";
+					exit(-1);
+				}
 				$this->updateTranslationApijs([], $config);
 			}
 		}
@@ -82,7 +94,10 @@ class Translate {
 		if (!empty($updateTranslationWebsite) && in_array('custom', $argv)) {
 			foreach ($updateTranslationWebsite as $config) {
 				echo 'updateTranslationWebsite: ',$config['vendor'],'/',$config['name'],"\n";
-				if (!is_dir($config['dir'])) exit("\nfatal: ".$config['dir']." does not exist!\n");
+				if (!is_dir($config['dir'])) {
+					echo "\nfatal: ",$config['dir']," does not exist!\n";
+					exit(-1);
+				}
 				$this->updateTranslationWebsite([], $config);
 			}
 		}
@@ -114,8 +129,13 @@ class Translate {
 	public function generateApijsEmbed(array $config) {
 
 		$files = [];
-		exec('find '.$config['dir'].' -name "*.js"', $files);
-		sort($files);
+		if (is_dir($config['dir'])) {
+			exec('find '.$config['dir'].' -name "*.js"', $files);
+			sort($files);
+		}
+		else {
+			echo ' warn: "',$config['dir'],'" is not a dir',"\n";
+		}
 
 		foreach ($files as $file) {
 
@@ -137,7 +157,7 @@ class Translate {
 			// load translated strings from TSV service, and from TSV service
 			$translatedStrings = [];
 			foreach ($locales as $locale) {
-				echo ' ',mb_substr($locale, 0, 5);
+				echo ' ',substr($locale, 0, 5);
 				$translatedStrings[$locale] = $this->loadService($config, $locale, $key, $sourceStrings);
 			}
 
@@ -154,13 +174,20 @@ class Translate {
 		if (empty($config['search'])) {
 
 			$files1 = [];
-			exec('find '.$config['dir'].'app/ -name "*.xml"', $files1);
-			sort($files1);
-
 			$files2 = [];
-			exec('find '.$config['dir'].'app/ -name "*.phtml"', $files2);
-			exec('find '.$config['dir'].'app/ -name "*.php"', $files2);
-			sort($files2);
+
+			if (is_dir($config['dir'])) {
+
+				exec('find '.$config['dir'].'app/ -name "*.xml"', $files1);
+				sort($files1);
+
+				exec('find '.$config['dir'].'app/ -name "*.phtml"', $files2);
+				exec('find '.$config['dir'].'app/ -name "*.php"', $files2);
+				sort($files2);
+			}
+			else {
+				echo ' warn: "',$config['dir'],'" is not a dir',"\n";
+			}
 
 			if (!empty($config['exclude'])) {
 				foreach ($files1 as $idx => $file) {
@@ -193,7 +220,7 @@ class Translate {
 		// generate CSV
 		foreach ($config['locales'] as $locale) {
 
-			echo ' ',str_pad(mb_substr($locale, 0, 5), 6);
+			echo ' ',str_pad(substr($locale, 0, 5), 6);
 
 			// load translated strings from CSV files, and from TSV service
 			$file = $config['dir'].'app/locale/'.$locale.'/'.$config['vendor'].'_'.$config['name'].'.csv';
@@ -219,7 +246,7 @@ class Translate {
 
 			foreach ($config['locales'] as $locale) {
 
-				echo ' ',str_pad(mb_substr($locale, 0, 5), 6);
+				echo ' ',str_pad(substr($locale, 0, 5), 6);
 				if (!is_dir($config['dir'].'app/locale/'.$locale.'/template/email/')) {
 					echo  '  (template/email directory does not exist)',"\n";
 					continue;
@@ -230,7 +257,7 @@ class Translate {
 
 				// write final HTML file
 				$final = $this->generateHTML($sourceStrings, $translatedStrings, $template);
-				$final = str_replace(' lang="en"', ' lang="'.mb_substr($locale, 0, 2).'"', $final);
+				$final = str_replace(' lang="en"', ' lang="'.substr($locale, 0, 2).'"', $final);
 				$this->writeOpenMageFile($config, $locale, str_replace('en_US', $locale, $email), $final);
 			}
 
@@ -257,9 +284,14 @@ class Translate {
 		if (empty($config['search'])) {
 
 			$files = [];
-			exec('find '.$config['dir'].' -name "*.rb"', $files);
-			exec('find '.$config['dir'].' -name "*.erb"', $files);
-			sort($files);
+			if (is_dir($config['dir'])) {
+				exec('find '.$config['dir'].' -name "*.rb"', $files);
+				exec('find '.$config['dir'].' -name "*.erb"', $files);
+				sort($files);
+			}
+			else {
+				echo ' warn: "',$config['dir'],'" is not a dir',"\n";
+			}
 
 			if (!empty($config['exclude'])) {
 				foreach ($files as $idx => $file) {
@@ -281,7 +313,7 @@ class Translate {
 		// generate YML
 		foreach ($config['locales'] as $locale) {
 
-			echo ' ',str_pad(mb_substr($locale, 0, 5), 6);
+			echo ' ',str_pad(substr($locale, 0, 5), 6);
 
 			// load translated strings from YML files, and from TSV service
 			$file = $config['dir'].'config/locales/'.$locale.'.yml';
@@ -310,8 +342,13 @@ class Translate {
 		if (empty($config['search'])) {
 
 			$files = [];
-			exec('find '.$config['dir'].' -name "*.po"', $files);
-			sort($files);
+			if (is_dir($config['dir'])) {
+				exec('find '.$config['dir'].' -name "*.po"', $files);
+				sort($files);
+			}
+			else {
+				echo ' warn: "',$config['dir'],'" is not a dir',"\n";
+			}
 
 			if (!empty($config['exclude'])) {
 				foreach ($files as $idx => $file) {
@@ -333,7 +370,7 @@ class Translate {
 		// generate PO
 		foreach ($config['locales'] as $locale) {
 
-			echo ' ',str_pad(mb_substr($locale, 0, 5), 6);
+			echo ' ',str_pad(substr($locale, 0, 5), 6);
 
 			// load translated strings from PO files, and from TSV service
 			$file = $config['dir'].$locale.'.po';
@@ -366,13 +403,15 @@ class Translate {
 			$template      = file_get_contents($file);
 			$sourceStrings = $this->loadService($config, 'en_US', 'base', $template, [], false, true);
 
-			if ($sourceStrings === false)
-				exit("\nfatal: sourceStrings not found for APIJS!\n");
+			if ($sourceStrings === false) {
+				echo "\nfatal: sourceStrings not found for APIJS!\n";
+				exit(-1);
+			}
 
 			// load translated strings from TSV service
 			$translatedStrings = [];
 			foreach ($config['locales'] as $locale) {
-				echo ' ',mb_substr($locale, 0, 5);
+				echo ' ',substr($locale, 0, 5);
 				$translatedStrings[$locale] = $this->loadService($config, $locale, 'base', $sourceStrings);
 			}
 
@@ -399,7 +438,7 @@ class Translate {
 		// generate CSV
 		foreach ($config['locales'] as $locale) {
 
-			echo ' ',str_pad(mb_substr($locale, 0, 5), 6);
+			echo ' ',str_pad(substr($locale, 0, 5), 6);
 
 			// load translated strings from CSV files, and from TSV service
 			$file = $config['dir'].$locale.'.csv';
@@ -424,8 +463,9 @@ class Translate {
 				unlink($file);
 		}
 		else {
+			$orig = is_file($file) ? md5_file($file) : 'abc';
 			file_put_contents($file, $final);
-			echo realpath($file),"\n";
+			echo (($orig != md5_file($file)) ? realpath($file) : ''),"\n";
 		}
 	}
 
@@ -455,8 +495,9 @@ class Translate {
 			}
 		}
 		else {
+			$orig = is_file($file) ? md5_file($file) : 'abc';
 			file_put_contents($file, $final);
-			echo realpath($file),"\n";
+			echo (($orig != md5_file($file)) ? realpath($file) : ''),"\n";
 			foreach ([
 				['fr_FR', 'fr_CA'],
 				['fr_FR', 'fr_CH'],
@@ -473,7 +514,7 @@ class Translate {
 				['es_ES', 'es_VE']
 			] as [$from, $to]) {
 				if (($locale == $from) && !in_array($to, $config['locales'])) {
-					$dir = (mb_strpos($file, 'template/email') === false) ? 'app/locale/'.$to : 'app/locale/'.$to.'/template/email';
+					$dir = str_contains($file, 'template/email') ? 'app/locale/'.$to.'/template/email' : 'app/locale/'.$to;
 					if (!is_dir($config['dir'].$dir))
 						mkdir($config['dir'].$dir, 0755, true);
 					file_put_contents(str_replace($locale, $to, $file), $final);
@@ -547,17 +588,17 @@ class Translate {
 			$current = $locale;
 			$locale  = str_replace('-', '_', $locale);
 			if (mb_strlen($locale) > 2) {
-				$tmp = (array) explode('_', $locale); // (yes)
+				$tmp = explode('_', $locale);
 				if (mb_strtolower($tmp[0]) == mb_strtolower($tmp[1])) {
 					$locale = $tmp[0];
-					$double = mb_strtolower($locale).'_'.mb_strtoupper($locale);
+					$double = mb_strtolower($locale).'_'.strtoupper($locale);
 				}
 				else {
 					$double = mb_strtolower($tmp[0]).'_'.mb_strtoupper($tmp[0]);
 				}
 			}
 			else {
-				$double = mb_strtolower($locale).'_'.mb_strtoupper($locale);
+				$double = mb_strtolower($locale).'_'.strtoupper($locale);
 			}
 
 			if ($locale == 'en_US')
@@ -573,7 +614,7 @@ class Translate {
 			else if ($locale == 'el_GR')
 				$locale = 'el';
 
-			$tmp = mb_substr($locale, 0, 2);
+			$tmp = substr($locale, 0, 2);
 
 			if ($forAPIJS)
 				$data[] = '		'.mb_strtolower(str_replace('_', '', $locale)).': {';
@@ -654,9 +695,15 @@ class Translate {
 	// LOAD TRANSLATED STRINGS FROM SERVICE
 	// TSV file (for example a google sheet export)
 	// return $data[] = translations
-	public function loadService(array $config, string $locale, string $src, $sourceStrings, array $translatedStrings = [],
-		bool $fill = false, bool $onlyKeys = false) {
-
+	public function loadService(
+		array $config,
+		string $locale,
+		string $src,
+		$sourceStrings, // string or array
+		array $translatedStrings = [],
+		bool $fill = false,
+		bool $onlyKeys = false
+	) {
 		if (empty($config['service'])) {
 			// return same format when service is available
 			$data = [];
@@ -701,7 +748,7 @@ class Translate {
 
 			foreach ($lines as $line) {
 
-				$cells = (array) explode("\t", $line); // (yes)
+				$cells = explode("\t", $line);
 
 				if (empty($head)) {
 					foreach ($cells as $i => $cell) {
@@ -711,10 +758,14 @@ class Translate {
 							$head[$i] = trim(mb_substr($cell, 0, mb_stripos($cell, ' ')));
 					}
 					$enus = array_search('en-US', $head);
-					if ($keys < 0)
-						exit("\nfatal: column config not found in TSV!\n");
-					if (($enus === false) || ($enus < 0))
-						exit("\nfatal: column en-US not found in TSV!\n");
+					if ($keys < 0) {
+						echo "\nfatal: column config not found in TSV!\n";
+						exit(-1);
+					}
+					if (($enus === false) || ($enus < 0)) {
+						echo "\nfatal: column en-US not found in TSV!\n";
+						exit(-1);
+					}
 					$enus = (int) $enus; // (yes)
 				}
 				else if (!$found) {
@@ -742,8 +793,10 @@ class Translate {
 			$cache[$key] = $data;
 		}
 
-		if (empty($cache[$key]))
-			exit("\nfatal: data not found in TSV!\n");
+		if (empty($cache[$key])) {
+			echo "\nfatal: data not found in TSV!\n";
+			exit(-1);
+		}
 
 		// check data from HTML
 		if (is_string($sourceStrings) && (mb_substr($src, -5) == '.html')) {
@@ -761,7 +814,8 @@ class Translate {
 					echo "\n",'      string not found: ',$data[$code]['en-US'][$src][$i];
 					if (isset($data[$code]['en-US'][$src][$i + 1]))
 					echo "\n",'           next string: ',$data[$code]['en-US'][$src][$i + 1];
-					exit("\n");
+					echo "\n";
+					exit(-1);
 				}
 			}
 		}
@@ -780,12 +834,14 @@ class Translate {
 					echo "\n",'      string not found: ',$data[$code]['en-US'][$src][$i];
 					if (isset($data[$code]['en-US'][$src][$i + 1]))
 					echo "\n",'           next string: ',$data[$code]['en-US'][$src][$i + 1];
-					exit("\n");
+					echo "\n";
+					exit(-1);
 				}
 			}
 		}
 		// check data from CSV
 		else if (is_array($sourceStrings) && empty($config['allowNotSame'])) {
+
 			foreach ($sourceStrings as $i => $string) {
 
 				if (!isset($data[$code]['en-US'][$src][$i])) {
@@ -794,11 +850,13 @@ class Translate {
 					echo "\n",' previous string found: ',$data[$code]['en-US'][$src][$i - 1];
 					echo "\n",'          string found: (nothing)';
 					echo "\n",'       string expected: ',$string;
-					exit("\n");
+					echo "\n";
+					exit(-1);
 				}
+
 				if (($string != $data[$code]['en-US'][$src][$i]) && // 'Created At'
-					    ($string != ' '.$data[$code]['en-US'][$src][$i]) && // ' Created At'
-					    ($string != $data[$code]['config'][$src][$i])
+					($string != ' '.$data[$code]['en-US'][$src][$i]) && // ' Created At'
+					($string != $data[$code]['config'][$src][$i])
 				) {
 					$allow = false;
 					foreach ($strs as $str) {
@@ -819,9 +877,9 @@ class Translate {
 						echo "\n",'       string expected: ',$string;
 						if (isset($data[$code]['en-US'][$src][$i + 1]))
 						echo "\n",'           next string: ',$data[$code]['en-US'][$src][$i + 1];
-						// debug
-						//echo "\n"; print_r($sourceStrings);
-						exit("\n");
+						echo "\n";
+						//print_r($sourceStrings);
+						exit(-1);
 					}
 				}
 			}
@@ -829,9 +887,9 @@ class Translate {
 
 		// update locale code
 		if (mb_strlen($locale) == 2)
-			$locale .= '_'.mb_strtoupper($locale);
+			$locale .= '_'.strtoupper($locale);
 		else if (mb_strlen($locale) > 5)
-			$locale = mb_substr($locale, 0, 5);
+			$locale = substr($locale, 0, 5);
 
 		if ($locale == 'en_EN')
 			$locale = 'en_US';
@@ -847,7 +905,7 @@ class Translate {
 			$locale = 'el_GR';
 
 		// reorder data
-		if (!empty($config['allowNotSame'])) {
+		if (!empty($config['keepOrder'])) {
 			$newdata = [];
 			foreach ($sourceStrings as $string) {
 				$key = array_search($string, $data[$code]['en-US'][$src]);
@@ -860,7 +918,7 @@ class Translate {
 		}
 
 		// return translated data
-		return $onlyKeys ? $data[$code]['config'][$src] : $data[$code][str_replace('_', '-', $locale)][$src];
+		return $onlyKeys ? $data[$code]['config'][$src] ?? [] : $data[$code][str_replace('_', '-', $locale)][$src] ?? [];
 	}
 
 
@@ -877,8 +935,7 @@ class Translate {
 
 			$resource = fopen($file, 'rb');
 
-			while (($line = fgetcsv($resource, 2500)) !== false) {
-				$line = (array) $line; // (yes)
+			while (!empty($line = fgetcsv($resource, 2500))) {
 				if (!empty($line[0]) && !empty($line[1]) && empty($data[$line[0]]))
 					$data[$line[0]] = trim(stripslashes($line[1]));
 			}
@@ -1045,6 +1102,12 @@ class Translate {
 			}
 		}
 	}
+}
+
+if (!function_exists('str_contains')) {
+    function str_contains($haystack, $needle) {
+        return ($needle === '') || (strpos($haystack, $needle) !== false);
+    }
 }
 
 $obj = new Translate();

@@ -1,5 +1,7 @@
 <?php
 
+$tsvLink = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv';
+
 // https://github.com/luigifab/translator
 //      dir: is the base directory
 //   search: is optionnal (except for updateTranslationWebsite) and it is relative to $dir
@@ -19,6 +21,8 @@ $example = [
 		'ignoreStrings'       => ['example'], // optionnal
 		'sourceStringsBefore' => ['example'], // optionnal
 		'sourceStringsAfter'  => ['example'], // optionnal
+		'allowNotSame' => true,               // optionnal
+		'keepOrder'    => true,               // optionnal
 	]
 ];
 
@@ -31,63 +35,55 @@ $updateTranslationOpenMageModule = [
 		'vendor'  => 'Luigifab',
 		'name'    => 'Maillog',
 		'locales' => $langs,
-		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
-				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv',
-		'nocheckStrings' => ['<p>Synchronization allow to synchronize'],
+		'service' => $tsvLink,
+		'nocheckStrings' => ['<p>Synchronization allow to synchronize', '<p>With this feature,'],
 		'ignoreStrings'  => ['<b>'],
-		'sourceStringsAfter' => ['Copy']
+		'sourceStringsAfter' => ['Copy'],
 	], [
 		'dir'     => './mage-cronlog/src/',
 		'vendor'  => 'Luigifab',
 		'name'    => 'Cronlog',
 		'locales' => $langs,
-		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
-				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv'
+		'service' => $tsvLink,
 	], [
 		'dir'     => './mage-modules/src/',
 		'vendor'  => 'Luigifab',
 		'name'    => 'Modules',
 		'locales' => $langs,
-		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
-				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv'
+		'service' => $tsvLink,
 	], [
 		'dir'     => './mage-versioning/src/',
 		'vendor'  => 'Luigifab',
 		'name'    => 'Versioning',
 		'locales' => $langs,
-		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
-				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv',
+		'service' => $tsvLink,
 		'ignoreStrings'      => ['%s (%s)'],
-		'sourceStringsAfter' => array_merge($obj->loadCSV(['./mage-versioning/src/app/locale/en_US/Luigifab_Versioning.csv'], true), ['Error number: §'])
+		'sourceStringsAfter' => array_merge($obj->loadCSV(['./mage-versioning/src/app/locale/en_US/Luigifab_Versioning.csv'], true), ['Error number: §']),
 	], [
 		'dir'     => './mage-urlnosql/src/',
 		'vendor'  => 'Luigifab',
 		'name'    => 'Urlnosql',
 		'locales' => $langs,
-		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
-				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv'
+		'service' => $tsvLink,
 	], [
 		'dir'     => './mage-minifier/src/',
 		'vendor'  => 'Luigifab',
 		'name'    => 'Minifier',
 		'locales' => $langs,
-		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
-				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv'
+		'service' => $tsvLink,
 	], [
 		'dir'     => './mage-apijs/src/',
 		'vendor'  => 'Luigifab',
 		'name'    => 'Apijs',
 		'locales' => $langs,
-		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
-				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv'
+		'service' => $tsvLink,
 	], [
 		'dir'     => './mage-shippingmax/src/',
 		'vendor'  => 'Kyrena',
 		'name'    => 'Shippingmax',
 		'exclude' => 'owebia',
 		'locales' => $langs,
-		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
-				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv'
+		'service' => $tsvLink,
 	], [
 		'dir'     => './mage-shippingmax/src/',
 		'vendor'  => 'Owebia',
@@ -95,15 +91,13 @@ $updateTranslationOpenMageModule = [
 		'exclude' => 'kyrena',
 		'locales' => $langs,
 		'ignoreStrings' => ['{os2editor.help.'],
-		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
-				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv'
+		'service' => $tsvLink,
 	], [
 		'dir'     => './mage-paymentmax/src/',
 		'vendor'  => 'Kyrena',
 		'name'    => 'Paymentmax',
 		'locales' => $langs,
-		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
-				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv'
+		'service' => $tsvLink,
 	]
 ];
 
@@ -115,9 +109,8 @@ $updateTranslationRedminePlugin = [
 		'vendor'  => 'Rluigifab',
 		'name'    => 'Apijs',
 		'locales' => ['en', 'fr', 'pt', 'pt-BR', 'it', 'es', 'de', 'pl', 'nl', 'cs', 'sk', 'uk', 'ro', 'hu', 'el', 'tr', 'ru', 'ja', 'zh'],
-		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
-				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv',
-		'filter'  => 'apijs_'
+		'service' => $tsvLink,
+		'filter'  => 'apijs_',
 	]
 ];
 
@@ -133,9 +126,9 @@ $updateTranslationPo = [
 		'vendor'  => 'Luigifab',
 		'name'    => 'Awf',
 		'locales' => ['fr'], // en
-		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
-				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv',
-		'allowNotSame' => true
+		'service' => $tsvLink,
+		'allowNotSame' => true,
+		'keepOrder'    => true,
 	]
 ];
 
@@ -148,8 +141,7 @@ $updateTranslationApijs = [
 		'vendor'  => 'Custom',
 		'name'    => 'Apijs',
 		'locales' => ['en', 'fr', 'pt', 'pt-BR', 'it', 'es', 'de', 'pl', 'nl', 'cs', 'sk', 'uk', 'ro', 'hu', 'el', 'tr', 'ru', 'ja', 'zh'],
-		'service' => 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqS3j4Wd-Bt7Zb52eJiQed_'.
-				'NilvKo0wGdw8noL4vhFOPsUeV9O6EN8odni6YepDGicYApcJ4Zy5opv/pub?gid=1790927668&single=true&output=tsv'
+		'service' => $tsvLink,
 	]
 ];
 
@@ -178,7 +170,8 @@ $updateTranslationWebsite = [
 			'../../adminer/shortcuts.php',
 			'../../gtk/human-theme.php',
 			'../../gtk/awf-extended.php',
-			'../../python/radexreader.php'
+			'../../python/radexreader.php',
+			'../../voyage/index.php',
 		],
 		'vendor'  => 'Custom',
 		'name'    => 'Doc',
@@ -198,9 +191,9 @@ $updateTranslationWebsite = [
 			'<strong>Warning</strong>: your browser <strong>§ §</strong> is outdated, please <a §>upgrade your browser</a>.',
 			'Menu',
 			'Print preview',
-			'Print'
+			'Print',
 		],
 		'nocheckStrings' => ['<p>Synchronization allow to synchronize'],
-		'ignoreStrings'  => ['<abbr>CSS</abbr>', '<abbr>SVG</abbr>', 'luigifab.fr']
+		'ignoreStrings'  => ['<abbr>CSS</abbr>', '<abbr>SVG</abbr>', 'luigifab.fr'],
 	]
 ];

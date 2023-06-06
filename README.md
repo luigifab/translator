@@ -2,7 +2,7 @@ Stop russian war. **🇺🇦 Free Ukraine!**
 
 # translator
 
-My tool to extract translations and update translations files (CSV, YML, PO, JS) for PHP 7.2 / 7.3 / 7.4 / 8.0 / 8.1.
+My tool to extract translations and update translations files (CSV, YML, PO, JS) for PHP 7.2 / 7.3 / 7.4 / 8.0 / 8.1 / 8.2.
 
 The `translate.conf.php` file is yours. Never use it "as is" because it contains my configuration. At the beginning of the file, there is an example with all possible options. If you like this tool, take some of your time to improve my translations, go to https://bit.ly/2HyCCEc.
 
